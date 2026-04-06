@@ -1,2 +1,6 @@
 .idea
 .vscode
+build
+.env
+config/local.yml
+internal/delivery/http/gen

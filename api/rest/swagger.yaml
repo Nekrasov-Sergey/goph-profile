@@ -1,0 +1,448 @@
+openapi: "3.0.3"
+info:
+  title: Goph Profile API
+  description: API для управления аватарами пользователей
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+    description: API сервер
+
+tags:
+  - name: avatars
+    description: Операции с аватарами
+  - name: health
+    description: Healthcheck endpoints
+
+paths:
+  /health:
+    get:
+      servers:
+        - url: ""
+          description: Healthcheck без префикса API
+      tags:
+        - health
+      description: Healthcheck сервиса
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Сервис здоров
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: "healthy"
+                components:
+                  database:
+                    status: "healthy"
+                  storage:
+                    status: "healthy"
+                  kafka:
+                    status: "healthy"
+        "503":
+          description: Сервис нездоров
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: "unhealthy"
+                components:
+                  database:
+                    status: "healthy"
+                  storage:
+                    status: "unhealthy"
+                  kafka:
+                    status: "healthy"
+
+  /avatars:
+    post:
+      tags:
+        - avatars
+      description: Загрузка нового аватара
+      operationId: uploadAvatar
+      parameters:
+        - name: X-User-ID
+          in: header
+          required: true
+          description: Идентификатор пользователя
+          schema:
+            type: string
+            example: "user-123"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Файл изображения аватара (JPEG, PNG, WebP). Максимальный размер 10MB.
+            encoding:
+              file:
+                contentType: image/jpeg, image/png, image/webp
+      responses:
+        "201":
+          description: Аватар успешно загружен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadAvatarResponse"
+        "400":
+          description: Неверный запрос — неподдерживаемый формат файла или отсутствуют обязательные поля
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidFormat:
+                  value:
+                    error: "Неверный формат файла. Поддерживаемые форматы: jpeg, png, webp"
+                missingFile:
+                  value:
+                    error: "Файл отсутствует"
+        "413":
+          description: Файл слишком большой
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Файл слишком большой. Максимум: 10MB"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /avatars/{avatar_id}:
+    get:
+      tags:
+        - avatars
+      description: Получение аватарки по ID
+      operationId: getAvatar
+      parameters:
+        - name: avatar_id
+          in: path
+          required: true
+          description: Идентификатор аватара
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: size
+          in: query
+          required: false
+          description: Размер аватарки
+          schema:
+            type: string
+            enum:
+              - "100x100"
+              - "300x300"
+              - "original"
+            default: "original"
+            example: "300x300"
+        - name: format
+          in: query
+          required: false
+          description: Формат изображения
+          schema:
+            type: string
+            enum:
+              - jpeg
+              - png
+              - webp
+            example: "webp"
+      responses:
+        "200":
+          description: Аватар успешно получен
+          headers:
+            Content-Type:
+              description: Тип контента изображения
+              schema:
+                type: string
+                enum:
+                  - image/jpeg
+                  - image/png
+                  - image/webp
+            Cache-Control:
+              description: Заголовок кеширования
+              schema:
+                type: string
+                example: "max-age=86400"
+            ETag:
+              description: Хеш для кеширования
+              schema:
+                type: string
+                example: "\"abc123\""
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Аватар не найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Avatar not found"
+    delete:
+      tags:
+        - avatars
+      description: Удаление аватара по ID
+      operationId: deleteAvatar
+      parameters:
+        - name: avatar_id
+          in: path
+          required: true
+          description: Идентификатор аватара
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: X-User-ID
+          in: header
+          required: true
+          description: Идентификатор пользователя
+          schema:
+            type: string
+            example: "user-123"
+      responses:
+        "204":
+          description: Аватар успешно удален
+        "403":
+          description: Доступ запрещен — пользователь может удалять только свои аватары
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Доступ запрещён. Можно удалять только свои аватары"
+        "404":
+          description: Аватар не найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Avatar not found"
+
+  /avatars/{avatar_id}/metadata:
+    get:
+      tags:
+        - avatars
+      description: Получение метаданных аватара
+      operationId: getAvatarMetadata
+      parameters:
+        - name: avatar_id
+          in: path
+          required: true
+          description: Идентификатор аватара
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        "200":
+          description: Метаданные аватара успешно получены
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetAvatarMetadataResponse"
+        "404":
+          description: Аватар не найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Avatar not found"
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Сообщение об ошибке
+          example: "Неверный формат файла"
+
+    UploadAvatarResponse:
+      type: object
+      required:
+        - id
+        - user_id
+        - url
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор аватара
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        user_id:
+          type: string
+          description: Идентификатор пользователя
+          example: "user-123"
+        url:
+          type: string
+          format: uri
+          description: URL для доступа к аватару
+          example: "https://storage.example.com/avatars/550e8400-e29b-41d4-a716-446655440000"
+        status:
+          type: string
+          enum:
+            - pending
+            - processing
+            - completed
+            - failed
+          description: Статус обработки аватара
+          example: "processing"
+        created_at:
+          type: string
+          format: date-time
+          description: Время загрузки
+          example: "2024-01-01T00:00:00Z"
+
+    GetAvatarMetadataResponse:
+      type: object
+      required:
+        - id
+        - user_id
+        - file_name
+        - mime_type
+        - size
+        - dimensions
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор аватара
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        user_id:
+          type: string
+          description: Идентификатор пользователя
+          example: "user-123"
+        file_name:
+          type: string
+          description: Имя файла
+          example: "avatar.jpg"
+        mime_type:
+          type: string
+          description: MIME-тип изображения
+          example: "image/jpeg"
+        size:
+          type: integer
+          format: int64
+          description: Размер файла в байтах
+          example: 1024000
+        dimensions:
+          $ref: "#/components/schemas/ImageDimensions"
+        thumbnails:
+          type: array
+          description: Доступные миниатюры
+          items:
+            $ref: "#/components/schemas/Thumbnail"
+        created_at:
+          type: string
+          format: date-time
+          description: Время создания
+          example: "2024-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Время последнего обновления
+          example: "2024-01-01T00:00:00Z"
+
+    ImageDimensions:
+      type: object
+      required:
+        - width
+        - height
+      properties:
+        width:
+          type: integer
+          description: Ширина изображения в пикселях
+          example: 1920
+        height:
+          type: integer
+          description: Высота изображения в пикселях
+          example: 1080
+
+    Thumbnail:
+      type: object
+      required:
+        - size
+        - url
+      properties:
+        size:
+          type: string
+          description: Размер миниатюры
+          example: "300x300"
+        url:
+          type: string
+          format: uri
+          description: URL миниатюры
+          example: "https://storage.example.com/avatars/550e8400-e29b-41d4-a716-446655440000/300x300"
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - components
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - unhealthy
+          description: Общий статус сервиса
+          example: "healthy"
+        components:
+          type: object
+          required:
+            - database
+            - storage
+            - kafka
+          properties:
+            database:
+              $ref: "#/components/schemas/ComponentHealth"
+            storage:
+              $ref: "#/components/schemas/ComponentHealth"
+            kafka:
+              $ref: "#/components/schemas/ComponentHealth"
+
+    ComponentHealth:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - unhealthy
+          description: Статус компонента
+          example: "healthy"

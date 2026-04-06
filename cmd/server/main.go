@@ -1,0 +1,122 @@
+package main
+
+import (
+	"context"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"go.uber.org/multierr"
+
+	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
+	"github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http"
+	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/gen"
+	"github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/router"
+	"github.com/Nekrasov-Sergey/goph-profile/internal/repository/minio"
+	"github.com/Nekrasov-Sergey/goph-profile/internal/repository/postgres"
+	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/logger"
+)
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatal().Err(err).Msg("Сервер завершился с ошибкой")
+	}
+}
+
+func run() (err error) {
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer cancel()
+
+	l := logger.New()
+
+	cfg, err := config.NewServerConfig(l)
+	if err != nil {
+		return err
+	}
+
+	r, err := router.New(l, gin.ReleaseMode)
+	if err != nil {
+		return err
+	}
+
+	psql, err := postgres.New(cfg.DatabaseDSN, l)
+	if err != nil {
+		return err
+	}
+	defer multierr.AppendInvoke(&err, multierr.Close(psql))
+
+	minIO, err := minio.New(ctx, cfg.MinIO, l)
+	if err != nil {
+		return err
+	}
+
+	svc := service.New(psql, minIO, l)
+	httpSrv := http.New(r, cfg.HTTPAddr, svc, l)
+
+	// Регистрация маршрутов
+	registerHandlers(r, httpSrv)
+
+	// Запуск сервера
+	return startServer(ctx, l, httpSrv)
+}
+
+// registerHandlers регистрирует все HTTP обработчики.
+func registerHandlers(r *gin.Engine, httpSrv *http.Server) {
+	// Healthcheck на /health (без префикса /api/v1)
+	r.GET("/health", httpSrv.HealthCheck)
+
+	// API endpoints с префиксом /api/v1
+	api.RegisterHandlersWithOptions(r, httpSrv, api.GinServerOptions{
+		BaseURL: "/api/v1",
+	})
+}
+
+// startServer запускает HTTP сервер и обрабатывает graceful shutdown.
+func startServer(ctx context.Context, l zerolog.Logger, httpSrv *http.Server) error {
+	errCh := make(chan error, 1)
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := httpSrv.Run(); err != nil {
+			errCh <- err
+		}
+	}()
+
+	var runErr error
+
+	select {
+	case <-ctx.Done():
+		l.Info().Msg("Получен сигнал завершения")
+	case err := <-errCh:
+		runErr = err
+	}
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	errChShutdown := make(chan error, 1)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+			errChShutdown <- err
+		}
+	}()
+
+	wg.Wait()
+	close(errChShutdown)
+
+	for e := range errChShutdown {
+		runErr = multierr.Append(runErr, e)
+	}
+
+	return runErr
+}

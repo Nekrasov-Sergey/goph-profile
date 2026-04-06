@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avatar Upload</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+    <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 overflow-hidden">
+        <header class="bg-gradient-to-r from-purple-600 to-blue-600 p-6">
+            <h1 class="text-3xl font-bold text-white text-center">Avatar Upload Service</h1>
+            <p class="text-white/80 text-center mt-2">Upload your avatar image</p>
+        </header>
+
+        <main class="p-6 space-y-6">
+            <!-- Tabs -->
+            <div class="flex flex-wrap gap-2 mb-6">
+                <button id="tabUpload" class="px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white transition-all">
+                    Upload
+                </button>
+                <button id="tabGet" class="px-4 py-2 rounded-lg font-semibold bg-white/10 text-white/70 hover:bg-white/20 transition-all">
+                    Get
+                </button>
+                <button id="tabMetadata" class="px-4 py-2 rounded-lg font-semibold bg-white/10 text-white/70 hover:bg-white/20 transition-all">
+                    Metadata
+                </button>
+                <button id="tabDelete" class="px-4 py-2 rounded-lg font-semibold bg-white/10 text-white/70 hover:bg-white/20 transition-all">
+                    Delete
+                </button>
+            </div>
+
+            <!-- Upload Form -->
+            <form id="uploadForm" class="space-y-4">
+                <div>
+                    <label for="userId" class="block text-sm font-medium text-white mb-2">
+                        User ID <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="userId" name="userId" required placeholder="Enter your user ID"
+                           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                </div>
+
+                <div>
+                    <label for="image" class="block text-sm font-medium text-white mb-2">
+                        Choose Image <span class="text-red-400">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="file" id="image" name="image" accept="image/*" required
+                               class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                    </div>
+                    <div id="imagePreview" class="mt-4 hidden">
+                        <img id="previewImg" src="" alt="Preview"
+                             class="w-32 h-32 object-cover rounded-lg shadow-lg mx-auto">
+                    </div>
+                </div>
+
+                <button type="submit" id="submitBtn"
+                        class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
+                    <span id="btnText">Upload Avatar</span>
+                    <span id="btnLoader" class="hidden">
+              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg"
+                   fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+              </svg>
+              Uploading...
+            </span>
+                </button>
+            </form>
+
+            <!-- Get Avatar Form -->
+            <form id="getForm" class="space-y-4 hidden">
+                <div>
+                    <label for="avatarId" class="block text-sm font-medium text-white mb-2">
+                        Avatar ID <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="avatarId" name="avatarId" required placeholder="Enter avatar UUID"
+                           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="avatarSize" class="block text-sm font-medium text-white mb-2">
+                            Size
+                        </label>
+                        <select id="avatarSize" name="avatarSize"
+                                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                            <option value="original" class="bg-slate-800">Original</option>
+                            <option value="100x100" class="bg-slate-800">100x100</option>
+                            <option value="300x300" class="bg-slate-800">300x300</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="avatarFormat" class="block text-sm font-medium text-white mb-2">
+                            Format
+                        </label>
+                        <select id="avatarFormat" name="avatarFormat"
+                                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                            <option value="" class="bg-slate-800">Original</option>
+                            <option value="jpeg" class="bg-slate-800">JPEG</option>
+                            <option value="png" class="bg-slate-800">PNG</option>
+                            <option value="webp" class="bg-slate-800">WebP</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" id="getBtn"
+                        class="w-full bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:from-green-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
+                    <span id="getBtnText">Get Avatar</span>
+                    <span id="getBtnLoader" class="hidden">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg"
+                             fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Loading...
+                    </span>
+                </button>
+            </form>
+
+            <!-- Delete Avatar Form -->
+            <form id="deleteForm" class="space-y-4 hidden">
+                <div>
+                    <label for="deleteAvatarId" class="block text-sm font-medium text-white mb-2">
+                        Avatar ID <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="deleteAvatarId" name="deleteAvatarId" required placeholder="Enter avatar UUID"
+                           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all">
+                </div>
+
+                <div>
+                    <label for="deleteUserId" class="block text-sm font-medium text-white mb-2">
+                        User ID <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="deleteUserId" name="deleteUserId" required placeholder="Enter your user ID"
+                           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all">
+                </div>
+
+                <div class="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                    <p class="text-red-200 text-sm">
+                        <strong>Warning:</strong> This action cannot be undone. The avatar will be permanently deleted.
+                    </p>
+                </div>
+
+                <button type="submit" id="deleteBtn"
+                        class="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:from-red-700 hover:to-rose-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
+                    <span id="deleteBtnText">Delete Avatar</span>
+                    <span id="deleteBtnLoader" class="hidden">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg"
+                             fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Deleting...
+                    </span>
+                </button>
+            </form>
+
+            <!-- Metadata Form -->
+            <form id="metadataForm" class="space-y-4 hidden">
+                <div>
+                    <label for="metadataAvatarId" class="block text-sm font-medium text-white mb-2">
+                        Avatar ID <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="metadataAvatarId" name="metadataAvatarId" required placeholder="Enter avatar UUID"
+                           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all">
+                </div>
+
+                <button type="submit" id="metadataBtn"
+                        class="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:from-amber-700 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
+                    <span id="metadataBtnText">Get Metadata</span>
+                    <span id="metadataBtnLoader" class="hidden">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg"
+                             fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Loading...
+                    </span>
+                </button>
+            </form>
+
+            <!-- Metadata Result -->
+            <div id="metadataResult" class="hidden">
+                <div class="border-t border-white/20 pt-6">
+                    <h2 class="text-xl font-semibold text-white mb-4">Avatar Metadata</h2>
+                    <div class="bg-black/30 rounded-lg p-4 space-y-3">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-white/50">ID:</span>
+                                <p id="metaId" class="text-white font-mono break-all"></p>
+                            </div>
+                            <div>
+                                <span class="text-white/50">User ID:</span>
+                                <p id="metaUserId" class="text-white"></p>
+                            </div>
+                            <div>
+                                <span class="text-white/50">File Name:</span>
+                                <p id="metaFileName" class="text-white"></p>
+                            </div>
+                            <div>
+                                <span class="text-white/50">MIME Type:</span>
+                                <p id="metaMimeType" class="text-white"></p>
+                            </div>
+                            <div>
+                                <span class="text-white/50">Size:</span>
+                                <p id="metaSize" class="text-white"></p>
+                            </div>
+                            <div>
+                                <span class="text-white/50">Dimensions:</span>
+                                <p id="metaDimensions" class="text-white"></p>
+                            </div>
+                            <div>
+                                <span class="text-white/50">Created At:</span>
+                                <p id="metaCreatedAt" class="text-white"></p>
+                            </div>
+                            <div>
+                                <span class="text-white/50">Updated At:</span>
+                                <p id="metaUpdatedAt" class="text-white"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Avatar Result -->
+            <div id="avatarResult" class="hidden">
+                <div class="border-t border-white/20 pt-6">
+                    <h2 class="text-xl font-semibold text-white mb-4">Avatar</h2>
+                    <div class="flex flex-col items-center space-y-4">
+                        <img id="avatarImg" src="" alt="Avatar"
+                             class="max-w-full max-h-96 rounded-lg shadow-lg">
+                        <a id="avatarDownloadLink" href="" download
+                           class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all">
+                            Download Image
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div id="responseContainer" class="hidden">
+                <div class="border-t border-white/20 pt-6">
+                    <h2 class="text-xl font-semibold text-white mb-4">API Response</h2>
+                    <div id="responseContent" class="space-y-4">
+                        <div id="responseStatus" class="px-4 py-3 rounded-lg font-mono text-sm"></div>
+                        <div id="responseBody" class="bg-black/30 rounded-lg p-4 overflow-x-auto">
+                            <pre id="responseJson" class="text-green-400 text-sm font-mono whitespace-pre-wrap"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="errorMessage"
+                 class="hidden bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg">
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById('uploadForm');
+    const getForm = document.getElementById('getForm');
+    const deleteForm = document.getElementById('deleteForm');
+    const metadataForm = document.getElementById('metadataForm');
+    const tabUpload = document.getElementById('tabUpload');
+    const tabGet = document.getElementById('tabGet');
+    const tabDelete = document.getElementById('tabDelete');
+    const tabMetadata = document.getElementById('tabMetadata');
+    const imageInput = document.getElementById('image');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const btnLoader = document.getElementById('btnLoader');
+    const getBtn = document.getElementById('getBtn');
+    const getBtnText = document.getElementById('getBtnText');
+    const getBtnLoader = document.getElementById('getBtnLoader');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const deleteBtnText = document.getElementById('deleteBtnText');
+    const deleteBtnLoader = document.getElementById('deleteBtnLoader');
+    const metadataBtn = document.getElementById('metadataBtn');
+    const metadataBtnText = document.getElementById('metadataBtnText');
+    const metadataBtnLoader = document.getElementById('metadataBtnLoader');
+    const responseContainer = document.getElementById('responseContainer');
+    const responseStatus = document.getElementById('responseStatus');
+    const responseJson = document.getElementById('responseJson');
+    const errorMessage = document.getElementById('errorMessage');
+    const avatarResult = document.getElementById('avatarResult');
+    const avatarImg = document.getElementById('avatarImg');
+    const avatarDownloadLink = document.getElementById('avatarDownloadLink');
+    const metadataResult = document.getElementById('metadataResult');
+
+    // Tab switching
+    function switchTab(tab) {
+        // Reset all tabs
+        [tabUpload, tabGet, tabDelete, tabMetadata].forEach(t => {
+            t.classList.remove('bg-purple-600', 'bg-green-600', 'bg-red-600', 'bg-amber-600', 'text-white');
+            t.classList.add('bg-white/10', 'text-white/70');
+        });
+        // Reset all forms
+        [form, getForm, deleteForm, metadataForm].forEach(f => f.classList.add('hidden'));
+
+        // Activate selected tab and form
+        if (tab === 'upload') {
+            tabUpload.classList.add('bg-purple-600', 'text-white');
+            tabUpload.classList.remove('bg-white/10', 'text-white/70');
+            form.classList.remove('hidden');
+        } else if (tab === 'get') {
+            tabGet.classList.add('bg-green-600', 'text-white');
+            tabGet.classList.remove('bg-white/10', 'text-white/70');
+            getForm.classList.remove('hidden');
+        } else if (tab === 'delete') {
+            tabDelete.classList.add('bg-red-600', 'text-white');
+            tabDelete.classList.remove('bg-white/10', 'text-white/70');
+            deleteForm.classList.remove('hidden');
+        } else if (tab === 'metadata') {
+            tabMetadata.classList.add('bg-amber-600', 'text-white');
+            tabMetadata.classList.remove('bg-white/10', 'text-white/70');
+            metadataForm.classList.remove('hidden');
+        }
+
+        hideResponse();
+        hideError();
+        hideAvatarResult();
+        hideMetadataResult();
+    }
+
+    tabUpload.addEventListener('click', () => switchTab('upload'));
+    tabGet.addEventListener('click', () => switchTab('get'));
+    tabDelete.addEventListener('click', () => switchTab('delete'));
+    tabMetadata.addEventListener('click', () => switchTab('metadata'));
+
+    imageInput.addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                previewImg.src = e.target.result;
+                imagePreview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            imagePreview.classList.add('hidden');
+        }
+    });
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const userId = document.getElementById('userId').value;
+        const imageFile = imageInput.files[0];
+
+        if (!userId || !imageFile) {
+            showError('Please fill in all required fields');
+            return;
+        }
+
+        setLoading(true);
+        hideError();
+        hideResponse();
+
+        const formData = new FormData();
+        formData.append('image', imageFile);
+
+        try {
+            const response = await fetch('/api/v1/avatars', {
+                method: 'POST',
+                headers: {
+                    'X-User-ID': userId
+                },
+                body: formData
+            });
+
+            const responseData = await response.text();
+            let parsedData;
+
+            try {
+                parsedData = JSON.parse(responseData);
+            } catch {
+                parsedData = responseData;
+            }
+
+            displayResponse(response, parsedData);
+
+        } catch (error) {
+            showError(`Network error: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    });
+
+    // Get Avatar form submission
+    getForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const avatarId = document.getElementById('avatarId').value;
+        const size = document.getElementById('avatarSize').value;
+        const format = document.getElementById('avatarFormat').value;
+
+        if (!avatarId) {
+            showError('Please enter Avatar ID');
+            return;
+        }
+
+        setGetLoading(true);
+        hideError();
+        hideResponse();
+        hideAvatarResult();
+
+        try {
+            // Build URL with query parameters
+            let url = `/api/v1/avatars/${avatarId}`;
+            const params = new URLSearchParams();
+            if (size && size !== 'original') {
+                params.append('size', size);
+            }
+            if (format) {
+                params.append('format', format);
+            }
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMsg;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMsg = errorData.error || errorText;
+                } catch {
+                    errorMsg = errorText;
+                }
+                showError(`Request failed: ${response.status} - ${errorMsg}`);
+                return;
+            }
+
+            // Get the image as blob
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+
+            // Display the image
+            avatarImg.src = objectUrl;
+            avatarDownloadLink.href = objectUrl;
+            avatarDownloadLink.download = `avatar-${avatarId}.${blob.type.split('/')[1] || 'png'}`;
+            avatarResult.classList.remove('hidden');
+
+            // Show content type in response
+            responseContainer.classList.remove('hidden');
+            responseStatus.className = 'px-4 py-3 rounded-lg font-mono text-sm bg-green-500/20 border border-green-500/50 text-green-200';
+            responseStatus.textContent = `HTTP ${response.status} ${response.statusText}`;
+            responseJson.textContent = `Content-Type: ${blob.type}\nSize: ${(blob.size / 1024).toFixed(2)} KB`;
+
+        } catch (error) {
+            showError(`Network error: ${error.message}`);
+        } finally {
+            setGetLoading(false);
+        }
+    });
+
+    // Delete Avatar form submission
+    deleteForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const avatarId = document.getElementById('deleteAvatarId').value;
+        const userId = document.getElementById('deleteUserId').value;
+
+        if (!avatarId || !userId) {
+            showError('Please fill in all required fields');
+            return;
+        }
+
+        setDeleteLoading(true);
+        hideError();
+        hideResponse();
+
+        try {
+            const response = await fetch(`/api/v1/avatars/${avatarId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-User-ID': userId
+                }
+            });
+
+            if (response.status === 204) {
+                // Success - no content
+                responseContainer.classList.remove('hidden');
+                responseStatus.className = 'px-4 py-3 rounded-lg font-mono text-sm bg-green-500/20 border border-green-500/50 text-green-200';
+                responseStatus.textContent = 'HTTP 204 No Content';
+                responseJson.textContent = 'Avatar successfully deleted!';
+
+                // Clear form
+                document.getElementById('deleteAvatarId').value = '';
+                document.getElementById('deleteUserId').value = '';
+            } else {
+                // Error
+                const errorText = await response.text();
+                let errorMsg;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMsg = errorData.error || errorText;
+                } catch {
+                    errorMsg = errorText;
+                }
+
+                responseContainer.classList.remove('hidden');
+                responseStatus.className = 'px-4 py-3 rounded-lg font-mono text-sm bg-red-500/20 border border-red-500/50 text-red-200';
+                responseStatus.textContent = `HTTP ${response.status} ${response.statusText}`;
+                responseJson.textContent = errorMsg;
+                showError(`Delete failed: ${response.status} - ${errorMsg}`);
+            }
+
+        } catch (error) {
+            showError(`Network error: ${error.message}`);
+        } finally {
+            setDeleteLoading(false);
+        }
+    });
+
+    // Metadata form submission
+    metadataForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const avatarId = document.getElementById('metadataAvatarId').value;
+
+        if (!avatarId) {
+            showError('Please enter Avatar ID');
+            return;
+        }
+
+        setMetadataLoading(true);
+        hideError();
+        hideResponse();
+        hideMetadataResult();
+
+        try {
+            const response = await fetch(`/api/v1/avatars/${avatarId}/metadata`);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMsg;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMsg = errorData.error || errorText;
+                } catch {
+                    errorMsg = errorText;
+                }
+                showError(`Request failed: ${response.status} - ${errorMsg}`);
+                return;
+            }
+
+            const data = await response.json();
+
+            // Display metadata
+            document.getElementById('metaId').textContent = data.id;
+            document.getElementById('metaUserId').textContent = data.user_id;
+            document.getElementById('metaFileName').textContent = data.file_name;
+            document.getElementById('metaMimeType').textContent = data.mime_type;
+            document.getElementById('metaSize').textContent = formatBytes(data.size);
+            document.getElementById('metaDimensions').textContent = data.dimensions.width > 0
+                ? `${data.dimensions.width} x ${data.dimensions.height}`
+                : 'N/A (not processed)';
+            document.getElementById('metaCreatedAt').textContent = new Date(data.created_at).toLocaleString();
+            document.getElementById('metaUpdatedAt').textContent = new Date(data.updated_at).toLocaleString();
+
+            metadataResult.classList.remove('hidden');
+
+            // Show response
+            responseContainer.classList.remove('hidden');
+            responseStatus.className = 'px-4 py-3 rounded-lg font-mono text-sm bg-green-500/20 border border-green-500/50 text-green-200';
+            responseStatus.textContent = `HTTP ${response.status} ${response.statusText}`;
+            responseJson.textContent = JSON.stringify(data, null, 2);
+
+        } catch (error) {
+            showError(`Network error: ${error.message}`);
+        } finally {
+            setMetadataLoading(false);
+        }
+    });
+
+    function setLoading(loading) {
+        if (loading) {
+            submitBtn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+        } else {
+            submitBtn.disabled = false;
+            btnText.classList.remove('hidden');
+            btnLoader.classList.add('hidden');
+        }
+    }
+
+    function displayResponse(response, data) {
+        responseContainer.classList.remove('hidden');
+
+        const statusClass = response.ok
+            ? response.status === 201 ? 'bg-green-500/20 border border-green-500/50 text-green-200'
+                : 'bg-blue-500/20 border border-blue-500/50 text-blue-200'
+            : 'bg-red-500/20 border border-red-500/50 text-red-200';
+
+        responseStatus.className = `px-4 py-3 rounded-lg font-mono text-sm ${statusClass}`;
+        responseStatus.textContent = `HTTP ${response.status} ${response.statusText}`;
+
+        if (typeof data === 'object') {
+            responseJson.textContent = JSON.stringify(data, null, 2);
+        } else {
+            responseJson.textContent = data;
+        }
+
+        if (!response.ok) {
+            showError(`Request failed: ${response.status} ${response.statusText}`);
+        }
+    }
+
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.classList.remove('hidden');
+    }
+
+    function hideError() {
+        errorMessage.classList.add('hidden');
+    }
+
+    function hideResponse() {
+        responseContainer.classList.add('hidden');
+    }
+
+    function setGetLoading(loading) {
+        if (loading) {
+            getBtn.disabled = true;
+            getBtnText.classList.add('hidden');
+            getBtnLoader.classList.remove('hidden');
+        } else {
+            getBtn.disabled = false;
+            getBtnText.classList.remove('hidden');
+            getBtnLoader.classList.add('hidden');
+        }
+    }
+
+    function hideAvatarResult() {
+        avatarResult.classList.add('hidden');
+        // Revoke object URL to free memory
+        if (avatarImg.src && avatarImg.src.startsWith('blob:')) {
+            URL.revokeObjectURL(avatarImg.src);
+        }
+    }
+
+    function setDeleteLoading(loading) {
+        if (loading) {
+            deleteBtn.disabled = true;
+            deleteBtnText.classList.add('hidden');
+            deleteBtnLoader.classList.remove('hidden');
+        } else {
+            deleteBtn.disabled = false;
+            deleteBtnText.classList.remove('hidden');
+            deleteBtnLoader.classList.add('hidden');
+        }
+    }
+
+    function setMetadataLoading(loading) {
+        if (loading) {
+            metadataBtn.disabled = true;
+            metadataBtnText.classList.add('hidden');
+            metadataBtnLoader.classList.remove('hidden');
+        } else {
+            metadataBtn.disabled = false;
+            metadataBtnText.classList.remove('hidden');
+            metadataBtnLoader.classList.add('hidden');
+        }
+    }
+
+    function hideMetadataResult() {
+        metadataResult.classList.add('hidden');
+    }
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+</script>
+</body>
+
+</html>
