@@ -14,10 +14,11 @@ import (
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http"
-	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/gen"
+	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/openapi"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/router"
-	"github.com/Nekrasov-Sergey/goph-profile/internal/repository/minio"
-	"github.com/Nekrasov-Sergey/goph-profile/internal/repository/postgres"
+	"github.com/Nekrasov-Sergey/goph-profile/internal/infra/db/postgres"
+	"github.com/Nekrasov-Sergey/goph-profile/internal/infra/messaging/kafka"
+	"github.com/Nekrasov-Sergey/goph-profile/internal/infra/storage/minio"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/logger"
 )
@@ -55,7 +56,14 @@ func run() (err error) {
 		return err
 	}
 
-	svc := service.New(psql, minIO, l)
+	producer, err := kafka.NewProducer(ctx, l, cfg.Kafka)
+	if err != nil {
+		return err
+	}
+	defer multierr.AppendInvoke(&err, multierr.Close(producer))
+
+	svc := service.New(psql, minIO, producer, nil, l)
+
 	httpSrv := http.New(r, cfg.HTTPAddr, svc, l)
 
 	// Регистрация маршрутов

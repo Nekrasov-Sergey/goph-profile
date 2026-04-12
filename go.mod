@@ -3,16 +3,20 @@ module github.com/Nekrasov-Sergey/goph-profile
 go 1.26.1
 
 require (
+	github.com/chai2010/webp v1.4.0
 	github.com/gin-gonic/gin v1.12.0
+	github.com/goccy/go-json v0.10.5
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/minio/minio-go/v7 v7.0.100
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/oapi-codegen/runtime v1.3.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.35.0
+	github.com/segmentio/kafka-go v0.4.50
 	github.com/spf13/viper v1.21.0
 	go.uber.org/multierr v1.11.0
 )
@@ -32,7 +36,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
-	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
@@ -51,6 +54,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
+	github.com/pierrec/lz4/v4 v4.1.16 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect

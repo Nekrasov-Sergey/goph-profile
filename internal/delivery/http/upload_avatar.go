@@ -5,8 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/multierr"
 
-	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/gen"
+	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/openapi"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/errcodes"
 )
@@ -19,7 +20,7 @@ func (s *Server) UploadAvatar(c *gin.Context, params api.UploadAvatarParams) {
 		respondError(c, errors.New("файл отсутствует"), http.StatusBadRequest)
 		return
 	}
-	defer file.Close()
+	defer multierr.AppendInvoke(&err, multierr.Close(file))
 
 	req := service.UploadAvatarRequest{
 		UserID:   params.XUserID,
@@ -28,7 +29,7 @@ func (s *Server) UploadAvatar(c *gin.Context, params api.UploadAvatarParams) {
 		Size:     header.Size,
 	}
 
-	resp, err := s.service.UploadAvatar(ctx, req)
+	resp, err := s.service.CreateAvatar(ctx, req)
 	if err != nil {
 		if errors.Is(err, errcodes.ErrFileTooLarge) {
 			respondError(c, errcodes.ErrFileTooLarge, http.StatusRequestEntityTooLarge)

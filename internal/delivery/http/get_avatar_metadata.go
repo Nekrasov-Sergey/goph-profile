@@ -1,14 +1,16 @@
 package http
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	apitypes "github.com/oapi-codegen/runtime/types"
 
-	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/gen"
+	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/openapi"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/errcodes"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/utils"
 )
 
 func (s *Server) GetAvatarMetadata(c *gin.Context, avatarId apitypes.UUID) {
@@ -29,21 +31,30 @@ func (s *Server) GetAvatarMetadata(c *gin.Context, avatarId apitypes.UUID) {
 		Id:        avatar.ID,
 		UserId:    avatar.UserID,
 		FileName:  avatar.FileName,
-		MimeType:  avatar.MimeType,
+		MimeType:  string(avatar.MimeType),
 		Size:      avatar.SizeBytes,
 		CreatedAt: avatar.CreatedAt,
 		UpdatedAt: avatar.UpdatedAt,
 		Dimensions: api.ImageDimensions{
-			Width:  0, // todo: получать реальный размер при обработке worker'ом
-			Height: 0,
+			Width:  avatar.Width,
+			Height: avatar.Height,
 		},
 	}
 
-	// todo: добавить thumbnails когда worker будет готов
-	// if len(avatar.ThumbnailS3Keys) > 0 {
-	//     thumbnails := make([]api.Thumbnail, 0)
-	//     response.Thumbnails = &thumbnails
-	// }
+	if len(avatar.ThumbnailS3Keys) > 0 {
+		// Десериализуем ключи миниатюр
+		var thumbnailKeys map[string]string
+		if err := json.Unmarshal(avatar.ThumbnailS3Keys, &thumbnailKeys); err == nil {
+			thumbnails := make([]api.Thumbnail, 0, len(thumbnailKeys))
+			for size, key := range thumbnailKeys {
+				thumbnails = append(thumbnails, api.Thumbnail{
+					Size: size,
+					Url:  s.service.GetURL(key),
+				})
+			}
+			response.Thumbnails = utils.Ptr(thumbnails)
+		}
+	}
 
 	c.JSON(http.StatusOK, response)
 }

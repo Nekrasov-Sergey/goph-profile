@@ -4,24 +4,31 @@ import (
 	"context"
 	"io"
 
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	"go.uber.org/multierr"
+
+	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/errcodes"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/imageutils"
 )
 
 // GetAvatarRequest содержит параметры для получения аватара.
 type GetAvatarRequest struct {
 	ID     uuid.UUID
-	Size   string // "original", "100x100", "300x300"
-	Format string // "jpeg", "png", "webp" (пока не используется)
+	Size   types.ThumbnailSize // "100x100", "300x300"
+	Format types.ImageFormat   // "jpeg", "png", "webp"
 }
 
 // GetAvatarResponse содержит результат получения аватара.
 type GetAvatarResponse struct {
 	Reader   io.ReadCloser
-	MimeType string
+	MimeType types.MIMEType
 	Size     int64
 }
 
-// GetAvatar получает аватар по ID.
+// GetAvatar получает аватар по ID с поддержкой размера и формата.
 func (s *Service) GetAvatar(ctx context.Context, req GetAvatarRequest) (*GetAvatarResponse, error) {
 	// Получаем метаданные из БД
 	avatar, err := s.repo.GetAvatar(ctx, req.ID)
@@ -29,26 +36,59 @@ func (s *Service) GetAvatar(ctx context.Context, req GetAvatarRequest) (*GetAvat
 		return nil, err
 	}
 
-	// Определяем S3 ключ
-	s3Key := avatar.S3Key
-	mimeType := avatar.MimeType
+	s3Key, err := resolveS3Key(avatar, req.Size)
+	if err != nil {
+		return nil, err
+	}
 
-	// todo: когда будут миниатюры, выбирать по size
-	// if req.Size != "" && req.Size != "original" {
-	//     if thumbnailKey, ok := getThumbnailKey(avatar.ThumbnailS3Keys, req.Size); ok {
-	//         s3Key = thumbnailKey
-	//     }
-	// }
-
-	// Скачиваем файл из S3
 	reader, err := s.storage.Download(ctx, s3Key)
+	if err != nil {
+		return nil, errors.Wrap(err, "не удалось скачать файл из хранилища")
+	}
+
+	mimeType, err := imageutils.ResolveMimeType(avatar.MimeType, req.Format)
+	if err != nil {
+		multierr.AppendInvoke(&err, multierr.Close(reader))
+		return nil, err
+	}
+
+	newReader, size, err := imageutils.ChangeMimeType(reader, avatar.MimeType, mimeType)
 	if err != nil {
 		return nil, err
 	}
 
 	return &GetAvatarResponse{
-		Reader:   reader,
+		Reader:   newReader,
 		MimeType: mimeType,
-		Size:     avatar.SizeBytes,
+		Size:     size,
 	}, nil
+}
+
+func resolveS3Key(avatar *types.Avatar, size types.ThumbnailSize) (s3Key string, err error) {
+	if size == "" {
+		return avatar.S3Key, nil
+	}
+
+	if size != types.ThumbnailSize100 && size != types.ThumbnailSize300 {
+		return "", errcodes.ErrInvalidSize
+	}
+
+	// Проверяем, что миниатюры готовы
+	if avatar.ProcessingStatus != types.ProcessingStatusCompleted {
+		return "", errcodes.ErrThumbnailNotReady
+	}
+
+	// Десериализуем ключи миниатюр
+	var thumbnailKeys map[types.ThumbnailSize]string
+	if err := json.Unmarshal(avatar.ThumbnailS3Keys, &thumbnailKeys); err != nil {
+		return "", errors.Wrap(err, "не удалось десериализовать ключи миниатюр")
+	}
+
+	// Получаем ключ миниатюры
+	s3Key, ok := thumbnailKeys[size]
+	if !ok {
+		return "", errors.Wrap(errcodes.ErrThumbnailNotReady, "миниатюра не найдена")
+	}
+
+	return s3Key, nil
 }

@@ -14,6 +14,8 @@ create table if not exists avatars
     file_name         varchar(255) not null,
     mime_type         varchar(100) not null,
     size_bytes        bigint       not null,
+    width             integer,
+    height            integer,
     s3_key            varchar(500) not null,
     thumbnail_s3_keys jsonb,
     processing_status processing_status default 'pending',

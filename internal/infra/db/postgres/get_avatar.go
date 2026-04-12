@@ -13,13 +13,15 @@ import (
 )
 
 // GetAvatar получает аватар по ID.
-func (p *Postgres) GetAvatar(ctx context.Context, id uuid.UUID) (*types.Avatar, error) {
+func (p *Postgres) GetAvatar(ctx context.Context, avatarID uuid.UUID) (*types.Avatar, error) {
 	const query = `select id,
        id,
        user_id,
        file_name,
        mime_type,
        size_bytes,
+       width,
+       height,
        s3_key,
        thumbnail_s3_keys,
        processing_status,
@@ -32,7 +34,7 @@ where id = :id
 	`
 
 	args := map[string]any{
-		"id": id,
+		"id": avatarID,
 	}
 
 	avatar := &types.Avatar{}

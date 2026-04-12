@@ -3,21 +3,14 @@ package postgres
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/dbutils"
 )
 
 // UpdateAvatar обновляет аватар.
 func (p *Postgres) UpdateAvatar(ctx context.Context, avatar *types.Avatar) error {
-	// todo перенести на уровень сервиса когда воркер будет обновлять миниатюры
-	//if len(avatar.ThumbnailS3Keys) > 0 {
-	//	thumbnailKeysJSON, err := json.Marshal(avatar.ThumbnailS3Keys)
-	//	if err != nil {
-	//		return errors.Wrap(err, "не удалось сериализовать ключи миниатюр")
-	//	}
-	//	avatar.ThumbnailS3Keys = thumbnailKeysJSON
-	//}
-
 	const query = `update avatars
 set user_id           = :user_id,
     file_name         = :file_name,
@@ -30,5 +23,9 @@ set user_id           = :user_id,
 where id = :id
   AND deleted_at is null
 	`
-	return dbutils.NamedExec(ctx, p.db, query, avatar)
+
+	if err := dbutils.NamedExec(ctx, p.db, query, avatar); err != nil {
+		return errors.Wrap(err, "не удалось обновить аватар")
+	}
+	return nil
 }

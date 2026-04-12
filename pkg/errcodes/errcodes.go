@@ -11,4 +11,6 @@ var (
 	ErrAccessDenied          = errors.New("доступ запрещён. Можно удалять только свои аватары")
 	ErrFileTooLarge          = errors.New("файл слишком большой. Максимум: 10MB")
 	ErrInvalidFormat         = errors.New("неверный формат файла. Поддерживаемые форматы: jpeg, png, webp")
+	ErrThumbnailNotReady     = errors.New("миниатюра ещё не готова")
+	ErrInvalidSize           = errors.New("неверный размер. Допустимые значения: original, 100x100, 300x300")
 )

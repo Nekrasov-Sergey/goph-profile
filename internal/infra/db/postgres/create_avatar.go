@@ -14,9 +14,9 @@ import (
 
 // CreateAvatar создаёт новую запись аватара в базе данных.
 func (p *Postgres) CreateAvatar(ctx context.Context, avatar *types.Avatar) error {
-	const q = `insert into avatars (id, user_id, file_name, mime_type, size_bytes, s3_key,
+	const q = `insert into avatars (id, user_id, file_name, mime_type, size_bytes, width, height, s3_key,
                      thumbnail_s3_keys, processing_status, created_at, updated_at)
-values (:id, :user_id, :file_name, :mime_type, :size_bytes, :s3_key, :thumbnail_s3_keys,
+values (:id, :user_id, :file_name, :mime_type, :size_bytes, :width, :height, :s3_key, :thumbnail_s3_keys,
         :processing_status, :created_at, :updated_at)
         `
 
