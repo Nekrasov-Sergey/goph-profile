@@ -2,6 +2,6 @@
 .vscode
 build
 .env
-config/server.yml
-config/worker.yml
-internal/delivery/http/openapi/generated.go
+config/server.yaml
+config/worker.yaml
+/internal/delivery/http/openapi/

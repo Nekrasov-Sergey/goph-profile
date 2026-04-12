@@ -20,7 +20,7 @@ type WorkerConfig struct {
 func GetWorkerConfigPath() string {
 	c := os.Getenv("WORKER_CONFIG_PATH")
 	if c == "" {
-		c = "./config/worker.yml"
+		c = "./config/worker.yaml"
 	}
 	return c
 }

@@ -37,7 +37,7 @@ type MinIO struct {
 func GetServerConfigPath() string {
 	c := os.Getenv("SERVER_CONFIG_PATH")
 	if c == "" {
-		c = "./config/server.yml"
+		c = "./config/server.yaml"
 	}
 	return c
 }

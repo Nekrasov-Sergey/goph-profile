@@ -1,9 +1,9 @@
-DatabaseDSN: postgres://change_me:change_me@localhost:5555/change_me?sslmode=disable
+DatabaseDSN: postgres://profile:profile@localhost:5555/profile?sslmode=disable
 
 MinIO:
   Endpoint: localhost:9000
-  AccessKey: change_me
-  SecretKey: change_me
+  AccessKey: minioadmin
+  SecretKey: minioadmin
   Bucket: avatars
   UseSSL: false
 

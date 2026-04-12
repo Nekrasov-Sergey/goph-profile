@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/rs/zerolog"
@@ -62,10 +63,17 @@ func run() (err error) {
 }
 
 func startWorker(ctx context.Context, w *worker.Worker, l zerolog.Logger) {
-	go w.Run(ctx)
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		w.Run(ctx)
+	}()
 
 	<-ctx.Done()
 	l.Info().Msg("Получен сигнал завершения")
 
-	return
+	wg.Wait()
+	l.Info().Msg("Воркер остановлен")
 }

@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+/server
+/worker
+/build
+
+# Test files
+*_test.go
+testdata
+coverage.out
+coverage.html
+
+# Documentation
+*.md
+!README.md
+
+# Local config
+.env
+.env.*
+
+# Example files
+*.example.yaml
+*.example.yml
+
+# Development files
+Makefile

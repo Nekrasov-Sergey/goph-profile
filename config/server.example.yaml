@@ -1,0 +1,14 @@
+HTTPAddr: :8080
+DatabaseDSN: postgres://profile:profile@localhost:5555/profile?sslmode=disable
+
+MinIO:
+  Endpoint: localhost:9000
+  AccessKey: minioadmin
+  SecretKey: minioadmin
+  Bucket: avatars
+  UseSSL: false
+
+Kafka:
+  Brokers:
+    - localhost:29092
+  Topic: avatar-topic
