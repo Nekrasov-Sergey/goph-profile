@@ -13,6 +13,7 @@ import (
 
 type Consumer struct {
 	reader *kafka.Reader
+	logger zerolog.Logger
 }
 
 // NewConsumer создаёт новый консьюмер Kafka.
@@ -23,6 +24,7 @@ func NewConsumer(ctx context.Context, logger zerolog.Logger, cfgKafka config.Kaf
 			Topic:   cfgKafka.Topic,
 			GroupID: cfgKafka.GroupID,
 		}),
+		logger: logger,
 	}
 
 	if err := consumer.Ping(ctx); err != nil {
@@ -47,6 +49,7 @@ func (c *Consumer) Close() error {
 	if err := c.reader.Close(); err != nil {
 		return errors.Wrap(err, "не удалось закрыть Kafka")
 	}
+	c.logger.Info().Msg("Закрыто соединение с Kafka")
 	return nil
 }
 

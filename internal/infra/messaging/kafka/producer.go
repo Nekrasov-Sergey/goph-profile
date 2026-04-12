@@ -14,6 +14,7 @@ import (
 // Producer реализует Producer с использованием kafka-go.
 type Producer struct {
 	writer *kafka.Writer
+	logger zerolog.Logger
 }
 
 // NewProducer создаёт новый продюсер Kafka.
@@ -25,6 +26,7 @@ func NewProducer(ctx context.Context, logger zerolog.Logger, cfgKafka config.Kaf
 			AllowAutoTopicCreation: true,
 			Balancer:               &kafka.LeastBytes{},
 		},
+		logger: logger,
 	}
 
 	if err := producer.Ping(ctx); err != nil {
@@ -51,7 +53,11 @@ func (p *Producer) SendMessage(ctx context.Context, value []byte) error {
 
 // Close закрывает соединение с Kafka.
 func (p *Producer) Close() error {
-	return p.writer.Close()
+	if err := p.writer.Close(); err != nil {
+		return errors.Wrap(err, "не удалось закрыть Kafka")
+	}
+	p.logger.Info().Msg("Закрыто соединение с Kafka")
+	return nil
 }
 
 // Ping проверяет доступность Kafka.

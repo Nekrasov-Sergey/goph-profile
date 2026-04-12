@@ -1,0 +1,14 @@
+DatabaseDSN: postgres://profile:profile@db:5432/profile?sslmode=disable
+
+MinIO:
+  Endpoint: minio:9000
+  AccessKey: minioadmin
+  SecretKey: minioadmin
+  Bucket: avatars
+  UseSSL: false
+
+Kafka:
+  Brokers:
+    - kafka:9092
+  Topic: avatar-topic
+  GroupID: avatar-group

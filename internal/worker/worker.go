@@ -50,7 +50,7 @@ func (w *Worker) Run(ctx context.Context) {
 				}
 				w.logger.Info().
 					Str("avatar_id", msg.AvatarID.String()).
-					Msg("Миниатюры аватара успешно созданы")
+					Msg("Миниатюры аватарки успешно созданы")
 
 			case types.OperationDeleteFromS3:
 				if err := w.service.DeleteAvatarFromS3(ctx, msg); err != nil {
@@ -61,7 +61,7 @@ func (w *Worker) Run(ctx context.Context) {
 				}
 				w.logger.Info().
 					Str("avatar_id", msg.AvatarID.String()).
-					Msg("Аватарка успешно удалена из S3")
+					Msg("Аватарка и её миниатюры успешно удалены из S3")
 
 			default:
 				w.logger.Error().Msgf("Неизвестная операция: %s", msg.Operation)
