@@ -42,9 +42,18 @@ func (s *Service) HealthCheck(ctx context.Context) *HealthCheckResult {
 		result.Components.Storage = StatusHealthy
 	}
 
-	// Kafka пока не реализована
-	result.Components.Kafka = StatusUnhealthy
-	result.Status = StatusUnhealthy
+	// Проверяем Kafka
+	if s.producer != nil {
+		if err := s.producer.Ping(ctx); err != nil {
+			result.Components.Kafka = StatusUnhealthy
+			result.Status = StatusUnhealthy
+		} else {
+			result.Components.Kafka = StatusHealthy
+		}
+	} else {
+		result.Components.Kafka = StatusUnhealthy
+		result.Status = StatusUnhealthy
+	}
 
 	return result
 }

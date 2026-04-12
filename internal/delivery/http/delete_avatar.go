@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	apitypes "github.com/oapi-codegen/runtime/types"
 
-	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/gen"
+	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/openapi"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/errcodes"
 )
@@ -16,11 +16,11 @@ func (s *Server) DeleteAvatar(c *gin.Context, avatarId apitypes.UUID, params api
 	ctx := c.Request.Context()
 
 	req := service.DeleteAvatarRequest{
-		ID:     avatarId,
-		UserID: params.XUserID,
+		AvatarID: avatarId,
+		UserID:   params.XUserID,
 	}
 
-	err := s.service.DeleteAvatar(ctx, req)
+	err := s.service.DeleteAvatarFromDB(ctx, req)
 	if err != nil {
 		if errors.Is(err, errcodes.ErrAvatarNotFound) {
 			respondError(c, errcodes.ErrAvatarNotFound, http.StatusNotFound)

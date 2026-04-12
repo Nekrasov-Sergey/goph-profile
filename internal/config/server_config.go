@@ -14,6 +14,14 @@ type ServerConfig struct {
 	HTTPAddr    string
 	DatabaseDSN string
 	MinIO       MinIO
+	Kafka       Kafka
+}
+
+// Kafka содержит конфигурацию Kafka.
+type Kafka struct {
+	Brokers []string
+	Topic   string
+	GroupID string
 }
 
 // MinIO содержит конфигурацию S3 хранилища.
@@ -25,18 +33,18 @@ type MinIO struct {
 	UseSSL    bool
 }
 
-// GetConfigPath возвращает путь к файлу конфигурации.
-func GetConfigPath() string {
-	c := os.Getenv("CONFIG_PATH")
+// GetServerConfigPath возвращает путь к файлу конфигурации сервера.
+func GetServerConfigPath() string {
+	c := os.Getenv("SERVER_CONFIG_PATH")
 	if c == "" {
-		c = "./config/local.yml"
+		c = "./config/server.yml"
 	}
 	return c
 }
 
 // NewServerConfig загружает конфигурацию сервера из файла.
 func NewServerConfig(logger zerolog.Logger) (*ServerConfig, error) {
-	viper.SetConfigFile(GetConfigPath())
+	viper.SetConfigFile(GetServerConfigPath())
 
 	cfg := ServerConfig{
 		HTTPAddr: ":8080",
@@ -56,6 +64,8 @@ func NewServerConfig(logger zerolog.Logger) (*ServerConfig, error) {
 		Str("MinIO.Endpoint", cfg.MinIO.Endpoint).
 		Str("MinIO.Bucket", cfg.MinIO.Bucket).
 		Bool("MinIO.UseSSL", cfg.MinIO.UseSSL).
+		Strs("Kafka.Brokers", cfg.Kafka.Brokers).
+		Str("Kafka.Topic", cfg.Kafka.Topic).
 		Msg("Загружена конфигурация сервера")
 
 	return &cfg, nil

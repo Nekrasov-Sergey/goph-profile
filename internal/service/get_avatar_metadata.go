@@ -9,6 +9,6 @@ import (
 )
 
 // GetAvatarMetadata получает метаданные аватара без самого файла.
-func (s *Service) GetAvatarMetadata(ctx context.Context, id uuid.UUID) (*types.Avatar, error) {
-	return s.repo.GetAvatar(ctx, id)
+func (s *Service) GetAvatarMetadata(ctx context.Context, avatarID uuid.UUID) (*types.Avatar, error) {
+	return s.repo.GetAvatar(ctx, avatarID)
 }

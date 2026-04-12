@@ -14,11 +14,12 @@ import (
 
 // Service определяет интерфейс бизнес-логики для HTTP handlers.
 type Service interface {
-	UploadAvatar(ctx context.Context, req service.UploadAvatarRequest) (*service.UploadAvatarResponse, error)
+	CreateAvatar(ctx context.Context, req service.UploadAvatarRequest) (*service.UploadAvatarResponse, error)
 	GetAvatar(ctx context.Context, req service.GetAvatarRequest) (*service.GetAvatarResponse, error)
-	GetAvatarMetadata(ctx context.Context, id uuid.UUID) (*types.Avatar, error)
-	DeleteAvatar(ctx context.Context, req service.DeleteAvatarRequest) error
+	GetAvatarMetadata(ctx context.Context, avatarID uuid.UUID) (*types.Avatar, error)
+	DeleteAvatarFromDB(ctx context.Context, req service.DeleteAvatarRequest) error
 	HealthCheck(ctx context.Context) *service.HealthCheckResult
+	GetURL(s3Key string) string
 }
 
 // Server инкапсулирует http-сервер приложения.

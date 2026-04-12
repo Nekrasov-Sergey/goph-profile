@@ -7,3 +7,8 @@ MinIO:
   SecretKey: change_me
   Bucket: avatars
   UseSSL: false
+
+Kafka:
+  Brokers:
+    - localhost:9092
+  Topic: avatar-topic

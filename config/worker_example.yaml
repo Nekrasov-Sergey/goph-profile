@@ -1,0 +1,14 @@
+DatabaseDSN: postgres://change_me:change_me@localhost:5555/change_me?sslmode=disable
+
+MinIO:
+  Endpoint: localhost:9000
+  AccessKey: change_me
+  SecretKey: change_me
+  Bucket: avatars
+  UseSSL: false
+
+Kafka:
+  Brokers:
+    - localhost:29092
+  Topic: avatar-topic
+  GroupID: avatar-group

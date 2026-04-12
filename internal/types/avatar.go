@@ -22,8 +22,10 @@ type Avatar struct {
 	ID               uuid.UUID        `db:"id"`
 	UserID           string           `db:"user_id"`
 	FileName         string           `db:"file_name"`
-	MimeType         string           `db:"mime_type"`
+	MimeType         MIMEType         `db:"mime_type"`
 	SizeBytes        int64            `db:"size_bytes"`
+	Width            int              `db:"width"`
+	Height           int              `db:"height"`
 	S3Key            string           `db:"s3_key"`
 	ThumbnailS3Keys  []byte           `db:"thumbnail_s3_keys"` // map[size]s3_key
 	ProcessingStatus ProcessingStatus `db:"processing_status"`

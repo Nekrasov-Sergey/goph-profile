@@ -17,19 +17,31 @@ build-server:
 server: build-server
 	@./$(BUILD_DIR)/server
 
+# Собрать воркер
+.PHONY: build-worker
+build-worker:
+	@echo "🔧 Сборка воркера..."
+	@mkdir -p $(BUILD_DIR)
+	@go build $(LDFLAGS) -o $(BUILD_DIR)/worker ./cmd/worker
+
+# Собрать и запустить воркер
+.PHONY: worker
+worker: build-worker
+	@./$(BUILD_DIR)/worker
+
 # Генерация кода из OpenAPI спецификации
-.PHONY: gen
-gen: clean
-	mkdir -p internal/delivery/http/gen
+.PHONY: openapi
+openapi: clean
+	mkdir -p internal/delivery/http/openapi
 	oapi-codegen -package api \
 		-generate "models,gin-server" \
-		-o internal/delivery/http/gen/generated.gen.go \
+		-o internal/delivery/http/openapi/generated.go \
 		api/rest/swagger.yaml
 
 # Очистка сгенерированных файлов
 .PHONY: clean
 clean:
-	rm -rf internal/delivery/http/gen
+	rm -rf internal/delivery/http/openapi
 
 # Установка зависимостей
 .PHONY: deps
