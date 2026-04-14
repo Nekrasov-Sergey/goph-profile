@@ -1,7 +1,8 @@
 .idea
 .vscode
-build
-.env
-config/server.yaml
-config/worker.yaml
+/build/
+/.env
+/config/server.yaml
+/config/worker.yaml
 /internal/delivery/http/openapi/
+/internal/service/mocks/
