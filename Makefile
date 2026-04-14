@@ -127,27 +127,30 @@ docker-ps:
 
 # === Генерация кода ===
 
-# Генерация кода из OpenAPI спецификации
+# Генерация кода
 .PHONY: gen
-gen: clean-gen
+gen: gen-openapi gen-mocks
+
+# Генерация кода из OpenAPI спецификации
+.PHONY: gen-openapi
+gen-openapi:
 	@echo "⚙️  Генерация кода из OpenAPI..."
+	@rm -rf internal/delivery/http/openapi
 	@mkdir -p internal/delivery/http/openapi
-	oapi-codegen -package api \
+	@oapi-codegen -package api \
 		-generate "models,gin-server" \
 		-o internal/delivery/http/openapi/generated.go \
 		api/rest/swagger.yaml
 	@echo "  ✓ internal/delivery/http/openapi/generated.go"
 
-# Очистка сгенерированных файлов
-.PHONY: clean-gen
-clean-gen:
-	@rm -rf internal/delivery/http/openapi
-
-# Полная очистка
-.PHONY: clean
-clean: clean-gen
-	@rm -rf $(BUILD_DIR)
-	@echo "🧹 Очистка завершена"
+# Генерация моков для тестов
+.PHONY: gen-mocks
+gen-mocks:
+	@echo "🎭  Генерация моков..."
+	@rm -rf internal/service/mocks
+	@mkdir -p internal/service/mocks
+	@go generate ./...
+	@echo "  ✓ internal/service/mocks"
 
 # === Тестирование и линтеры ===
 
@@ -208,18 +211,6 @@ fmt:
 	@echo "📝 Форматирование кода..."
 	@go fmt ./...
 
-# Проверка форматирования
-.PHONY: fmt-check
-fmt-check:
-	@echo "📝 Проверка форматирования..."
-	@files=$$(gofmt -l .); \
-	if [ -n "$$files" ]; then \
-		echo "❌ Файлы требуют форматирования:"; \
-		echo "$$files"; \
-		exit 1; \
-	fi
-	@echo "✅ Форматирование в порядке"
-
 # === Справка ===
 
 .PHONY: help
@@ -244,10 +235,7 @@ help:
 	@echo "    make docker-clean  - Остановить и удалить volumes"
 	@echo ""
 	@echo "  Разработка:"
-	@echo "    make gen           - Генерация из OpenAPI"
+	@echo "    make gen           - Генерация кода"
 	@echo "    make test          - Запустить тесты"
 	@echo "    make lint          - Запустить линтер"
 	@echo "    make fmt           - Форматировать код"
-	@echo ""
-	@echo "  Очистка:"
-	@echo "    make clean         - Удалить build и сгенерированные файлы"

@@ -43,7 +43,7 @@ type Storage interface {
 	Ping(ctx context.Context) error
 }
 
-// Producer определяет интерфейс брокера сообщений.
+// Producer определяет интерфейс продюсера сообщений.
 //
 //go:generate minimock -i Producer -o ./mocks/producer.go -n ProducerMock
 type Producer interface {
