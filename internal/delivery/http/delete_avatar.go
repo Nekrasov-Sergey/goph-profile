@@ -12,6 +12,7 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/errcodes"
 )
 
+// DeleteAvatar обрабатывает удаление аватара по ID.
 func (s *Server) DeleteAvatar(c *gin.Context, avatarId apitypes.UUID, params api.DeleteAvatarParams) {
 	ctx := c.Request.Context()
 

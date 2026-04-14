@@ -9,6 +9,7 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
 )
 
+// HealthCheck обрабатывает проверку здоровья сервиса.
 func (s *Server) HealthCheck(c *gin.Context) {
 	ctx := c.Request.Context()
 

@@ -12,6 +12,7 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/errcodes"
 )
 
+// UploadAvatar обрабатывает загрузку нового аватара.
 func (s *Server) UploadAvatar(c *gin.Context, params api.UploadAvatarParams) {
 	ctx := c.Request.Context()
 

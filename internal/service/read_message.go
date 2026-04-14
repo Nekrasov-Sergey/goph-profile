@@ -9,6 +9,7 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
 )
 
+// GetAvatarMessage читает и десериализует сообщение об аватаре из Kafka.
 func (s *Service) GetAvatarMessage(ctx context.Context) (*types.AvatarMessage, error) {
 	kafkaMessage, err := s.consumer.ReadMessage(ctx)
 	if err != nil {

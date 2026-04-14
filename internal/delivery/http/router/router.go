@@ -5,6 +5,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// New создаёт и настраивает gin-роутер с middleware.
 func New(logger zerolog.Logger, mode string) (*gin.Engine, error) {
 	gin.SetMode(mode)
 

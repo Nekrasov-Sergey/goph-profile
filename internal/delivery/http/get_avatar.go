@@ -15,6 +15,7 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/utils"
 )
 
+// GetAvatar обрабатывает получение файла аватара по ID с опциональным размером и форматом.
 func (s *Server) GetAvatar(c *gin.Context, avatarId apitypes.UUID, params api.GetAvatarParams) {
 	ctx := c.Request.Context()
 

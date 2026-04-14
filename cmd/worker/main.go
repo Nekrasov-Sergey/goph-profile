@@ -19,12 +19,14 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/logger"
 )
 
+// main — точка входа worker.
 func main() {
 	if err := run(); err != nil {
 		log.Fatal().Err(err).Msg("Worker завершился с ошибкой")
 	}
 }
 
+// run инициализирует зависимости и запускает worker.
 func run() (err error) {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
@@ -62,6 +64,7 @@ func run() (err error) {
 	return nil
 }
 
+// startWorker запускает worker и ожидает сигнал завершения.
 func startWorker(ctx context.Context, w *worker.Worker, l zerolog.Logger) {
 	var wg sync.WaitGroup
 	wg.Add(1)

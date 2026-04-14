@@ -64,6 +64,7 @@ func (s *Service) GetAvatar(ctx context.Context, req GetAvatarRequest) (*GetAvat
 	}, nil
 }
 
+// resolveS3Key определяет S3-ключ для запрошенного размера миниатюры.
 func resolveS3Key(avatar *types.Avatar, size types.ThumbnailSize) (s3Key string, err error) {
 	if size == "" {
 		return avatar.S3Key, nil

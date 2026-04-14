@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// LoggerMiddleware добавляет zerolog в gin
+// LoggerMiddleware возвращает gin-middleware для логирования HTTP-запросов с zerolog.
 func LoggerMiddleware(baseLogger zerolog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		l := baseLogger.With().
