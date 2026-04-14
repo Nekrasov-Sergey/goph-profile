@@ -23,12 +23,14 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/logger"
 )
 
+// main — точка входа HTTP-сервера.
 func main() {
 	if err := run(); err != nil {
 		log.Fatal().Err(err).Msg("Сервер завершился с ошибкой")
 	}
 }
 
+// run инициализирует зависимости и запускает HTTP-сервер.
 func run() (err error) {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()

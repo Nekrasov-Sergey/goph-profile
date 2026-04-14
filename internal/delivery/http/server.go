@@ -29,6 +29,7 @@ type Server struct {
 	logger  zerolog.Logger
 }
 
+// New создаёт новый экземпляр HTTP-сервера.
 func New(handler http.Handler, addr string, service Service, logger zerolog.Logger) *Server {
 	return &Server{
 		server: &http.Server{

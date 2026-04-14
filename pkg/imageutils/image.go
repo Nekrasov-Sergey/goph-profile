@@ -57,6 +57,7 @@ func Encode(img image.Image, mimeType types.MIMEType) ([]byte, error) {
 	}
 }
 
+// encodeJPEG кодирует изображение в формат JPEG.
 func encodeJPEG(img image.Image) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85}); err != nil {
@@ -65,6 +66,7 @@ func encodeJPEG(img image.Image) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// encodePNG кодирует изображение в формат PNG.
 func encodePNG(img image.Image) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
@@ -73,6 +75,7 @@ func encodePNG(img image.Image) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// encodeWebP кодирует изображение в формат WebP.
 func encodeWebP(img image.Image) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := webp.Encode(&buf, img, &webp.Options{Quality: 85}); err != nil {
@@ -81,6 +84,7 @@ func encodeWebP(img image.Image) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// ChangeMimeType конвертирует изображение из текущего MIME-типа в запрошенный.
 func ChangeMimeType(
 	reader io.ReadCloser,
 	currentMimeType types.MIMEType,
@@ -110,6 +114,7 @@ func ChangeMimeType(
 	return io.NopCloser(bytes.NewReader(data)), int64(len(data)), nil
 }
 
+// ResolveMimeType определяет итоговый MIME-тип на основе текущего типа и запрошенного формата.
 func ResolveMimeType(currentMimeType types.MIMEType, reqFormat types.ImageFormat) (types.MIMEType, error) {
 	if reqFormat == "" {
 		return currentMimeType, nil

@@ -11,6 +11,7 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
 )
 
+// Consumer реализует консьюмер сообщений Kafka.
 type Consumer struct {
 	reader *kafka.Reader
 	logger zerolog.Logger
@@ -36,6 +37,7 @@ func NewConsumer(ctx context.Context, logger zerolog.Logger, cfgKafka config.Kaf
 	return consumer, nil
 }
 
+// ReadMessage читает следующее сообщение из Kafka.
 func (c *Consumer) ReadMessage(ctx context.Context) (*kafka.Message, error) {
 	msg, err := c.reader.ReadMessage(ctx)
 	if err != nil {

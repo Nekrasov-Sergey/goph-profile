@@ -11,10 +11,14 @@ import (
 type ProcessingStatus string
 
 const (
-	ProcessingStatusPending    ProcessingStatus = "pending"
+	// ProcessingStatusPending — аватар ожидает обработки.
+	ProcessingStatusPending ProcessingStatus = "pending"
+	// ProcessingStatusProcessing — аватар обрабатывается.
 	ProcessingStatusProcessing ProcessingStatus = "processing"
-	ProcessingStatusCompleted  ProcessingStatus = "completed"
-	ProcessingStatusFailed     ProcessingStatus = "failed"
+	// ProcessingStatusCompleted — обработка завершена.
+	ProcessingStatusCompleted ProcessingStatus = "completed"
+	// ProcessingStatusFailed — обработка завершилась ошибкой.
+	ProcessingStatusFailed ProcessingStatus = "failed"
 )
 
 // Avatar представляет модель аватара.

@@ -19,6 +19,7 @@ import (
 )
 
 const (
+	// maxFileSize — максимальный размер загружаемого файла (10MB).
 	maxFileSize = 10 * 1024 * 1024 // 10MB
 )
 

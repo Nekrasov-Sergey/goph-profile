@@ -13,6 +13,7 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/utils"
 )
 
+// GetAvatarMetadata обрабатывает получение метаданных аватара по ID.
 func (s *Server) GetAvatarMetadata(c *gin.Context, avatarId apitypes.UUID) {
 	ctx := c.Request.Context()
 
