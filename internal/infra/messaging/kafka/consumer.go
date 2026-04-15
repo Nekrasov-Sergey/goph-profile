@@ -4,11 +4,13 @@ package kafka
 import (
 	"context"
 
+	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/kafka-go"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
+	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
 )
 
 type options struct {
@@ -57,13 +59,19 @@ func NewConsumer(ctx context.Context, logger zerolog.Logger, opts ...Option) (*C
 	return consumer, nil
 }
 
-// ReadMessage читает следующее сообщение из Kafka.
-func (c *Consumer) ReadMessage(ctx context.Context) (*kafka.Message, error) {
+// ReadAvatarMessage читает и десериализует следующее сообщение об аватаре из Kafka.
+func (c *Consumer) ReadAvatarMessage(ctx context.Context) (*types.AvatarMessage, error) {
 	msg, err := c.reader.ReadMessage(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "не удалось прочитать сообщение из Kafka")
 	}
-	return &msg, nil
+
+	var avatarMessage types.AvatarMessage
+	if err := json.Unmarshal(msg.Value, &avatarMessage); err != nil {
+		return nil, errors.Wrap(err, "не удалось десериализовать сообщение")
+	}
+
+	return &avatarMessage, nil
 }
 
 // Close закрывает соединение с Kafka.
