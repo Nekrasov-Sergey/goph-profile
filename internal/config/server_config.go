@@ -49,7 +49,7 @@ func NewServerConfig(logger zerolog.Logger) (_ *ServerConfig, err error) {
 	if err != nil {
 		return nil, err
 	}
-	multierr.AppendInvoke(&err, multierr.Close(f))
+	defer multierr.AppendInvoke(&err, multierr.Close(f))
 
 	viper.SetConfigType("yaml")
 	if err = viper.ReadConfig(f); err != nil {

@@ -55,15 +55,9 @@ func (s *Service) CreateThumbnails(ctx context.Context, msg *types.AvatarMessage
 		return multierr.Append(err, s.setStatusFailed(ctx, avatar))
 	}
 
-	// ThumbnailDimensions содержит размеры миниатюр.
-	thumbnailDimensions := map[types.ThumbnailSize]uint{
-		types.ThumbnailSize100: 100,
-		types.ThumbnailSize300: 300,
-	}
-
 	// Создаём миниатюры
 	thumbnailKeys := make(map[types.ThumbnailSize]string)
-	for sizeName, dimension := range thumbnailDimensions {
+	for sizeName, dimension := range types.ThumbnailDimensions() {
 		// Ресайзим изображение
 		resized := resize.Thumbnail(dimension, dimension, img, resize.Lanczos3)
 

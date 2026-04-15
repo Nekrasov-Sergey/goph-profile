@@ -13,12 +13,15 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
 )
 
+// options — параметры подключения к Kafka, настраиваемые через функциональные опции.
 type options struct {
 	kafkaCfg config.Kafka
 }
 
+// Option — функциональная опция для Consumer.
 type Option func(*options)
 
+// WithKafkaCfg устанавливает конфигурацию Kafka.
 func WithKafkaCfg(kafkaCfg config.Kafka) Option {
 	return func(o *options) {
 		o.kafkaCfg = kafkaCfg
@@ -34,7 +37,6 @@ type Consumer struct {
 // NewConsumer создаёт новый консьюмер Kafka.
 func NewConsumer(ctx context.Context, logger zerolog.Logger, opts ...Option) (*Consumer, error) {
 	o := &options{}
-
 	for _, opt := range opts {
 		opt(o)
 	}
