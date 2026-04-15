@@ -12,6 +12,18 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
 )
 
+type options struct {
+	minIOCfg config.MinIO
+}
+
+type Option func(*options)
+
+func WithMinIOCfg(minIOCfg config.MinIO) Option {
+	return func(o *options) {
+		o.minIOCfg = minIOCfg
+	}
+}
+
 // MinIO реализует хранилище файлов на базе S3.
 type MinIO struct {
 	client *minio.Client
@@ -20,33 +32,41 @@ type MinIO struct {
 }
 
 // New создаёт новое подключение к S3 хранилищу.
-func New(ctx context.Context, cfg config.MinIO, logger zerolog.Logger) (*MinIO, error) {
-	client, err := minio.New(cfg.Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
-		Secure: cfg.UseSSL,
+func New(ctx context.Context, logger zerolog.Logger, opts ...Option) (*MinIO, error) {
+	o := &options{}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	minIOCfg := o.minIOCfg
+
+	client, err := minio.New(minIOCfg.Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(minIOCfg.AccessKey, minIOCfg.SecretKey, ""),
+		Secure: minIOCfg.UseSSL,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "не удалось создать S3 клиент")
 	}
 
 	// Проверяем существование бакета, создаём если не существует
-	exists, err := client.BucketExists(ctx, cfg.Bucket)
+	exists, err := client.BucketExists(ctx, minIOCfg.Bucket)
 	if err != nil {
 		return nil, errors.Wrap(err, "не удалось проверить существование бакета")
 	}
 
 	if !exists {
-		if err := client.MakeBucket(ctx, cfg.Bucket, minio.MakeBucketOptions{}); err != nil {
+		if err := client.MakeBucket(ctx, minIOCfg.Bucket, minio.MakeBucketOptions{}); err != nil {
 			return nil, errors.Wrap(err, "не удалось создать бакет")
 		}
-		logger.Info().Str("bucket", cfg.Bucket).Msg("Создан S3 бакет")
+		logger.Info().Str("bucket", minIOCfg.Bucket).Msg("Создан S3 бакет")
 	}
 
 	logger.Info().Msg("Установлено подключение к S3")
 
 	return &MinIO{
 		client: client,
-		bucket: cfg.Bucket,
+		bucket: minIOCfg.Bucket,
 		logger: logger,
 	}, nil
 }

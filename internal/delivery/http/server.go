@@ -12,6 +12,25 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
 )
 
+type options struct {
+	httpHandler http.Handler
+	httpAddress string
+}
+
+type Option func(*options)
+
+func WithHTTPHandler(httpHandler http.Handler) Option {
+	return func(o *options) {
+		o.httpHandler = httpHandler
+	}
+}
+
+func WithHTTPAddress(httpAddress string) Option {
+	return func(o *options) {
+		o.httpAddress = httpAddress
+	}
+}
+
 // Service определяет интерфейс бизнес-логики для HTTP handlers.
 type Service interface {
 	CreateAvatar(ctx context.Context, req service.UploadAvatarRequest) (*service.UploadAvatarResponse, error)
@@ -24,20 +43,26 @@ type Service interface {
 
 // Server инкапсулирует http-сервер приложения.
 type Server struct {
+	logger  zerolog.Logger
 	server  *http.Server
 	service Service
-	logger  zerolog.Logger
 }
 
 // New создаёт новый экземпляр HTTP-сервера.
-func New(handler http.Handler, addr string, service Service, logger zerolog.Logger) *Server {
+func New(logger zerolog.Logger, service Service, opts ...Option) *Server {
+	o := &options{}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
 	return &Server{
+		logger: logger,
 		server: &http.Server{
-			Handler: handler,
-			Addr:    addr,
+			Handler: o.httpHandler,
+			Addr:    o.httpAddress,
 		},
 		service: service,
-		logger:  logger,
 	}
 }
 

@@ -18,13 +18,13 @@ type Service interface {
 
 // Worker обрабатывает сообщения из Kafka и выполняет операции над аватарами.
 type Worker struct {
-	service Service
 	logger  zerolog.Logger
+	service Service
 }
 
 // New создаёт новый экземпляр worker.
-func New(service Service, logger zerolog.Logger) *Worker {
-	return &Worker{service: service, logger: logger}
+func New(logger zerolog.Logger, service Service) *Worker {
+	return &Worker{logger: logger, service: service}
 }
 
 // Run запускает цикл обработки сообщений из Kafka.

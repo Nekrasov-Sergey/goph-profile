@@ -38,10 +38,10 @@ func setupTestServer(t minimock.Tester) *testEnv {
 	storageMock := mocks.NewStorageMock(t)
 	producerMock := mocks.NewProducerMock(t)
 
-	svc := service.New(repoMock, storageMock, producerMock, nil, zerolog.Nop())
+	svc := service.New(zerolog.Nop(), repoMock, storageMock, producerMock, nil)
 
 	r := gin.New()
-	httpSrv := pkghttp.New(r, ":0", svc, zerolog.Nop())
+	httpSrv := pkghttp.New(zerolog.Nop(), svc, pkghttp.WithHTTPHandler(r), pkghttp.WithHTTPAddress(":0"))
 
 	r.GET("/health", httpSrv.HealthCheck)
 	api.RegisterHandlersWithOptions(r, httpSrv, api.GinServerOptions{
