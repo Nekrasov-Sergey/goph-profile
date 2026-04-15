@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
+	"go.uber.org/multierr"
 )
 
 // WorkerConfig содержит конфигурацию worker.
@@ -26,16 +27,21 @@ func GetWorkerConfigPath() string {
 }
 
 // NewWorkerConfig загружает конфигурацию worker из файла.
-func NewWorkerConfig(logger zerolog.Logger) (*WorkerConfig, error) {
-	viper.SetConfigFile(GetWorkerConfigPath())
+func NewWorkerConfig(logger zerolog.Logger) (_ *WorkerConfig, err error) {
+	f, err := openConfigSafe(GetWorkerConfigPath())
+	if err != nil {
+		return nil, err
+	}
+	multierr.AppendInvoke(&err, multierr.Close(f))
 
-	cfg := WorkerConfig{}
-
-	if err := viper.ReadInConfig(); err != nil {
+	viper.SetConfigType("yaml")
+	if err = viper.ReadConfig(f); err != nil {
 		return nil, errors.Wrap(err, "не удалось прочитать конфигурацию из файла")
 	}
 
-	if err := viper.Unmarshal(&cfg); err != nil {
+	cfg := WorkerConfig{}
+
+	if err = viper.Unmarshal(&cfg); err != nil {
 		return nil, errors.Wrap(err, "не удалось распарсить конфигурацию в структуру")
 	}
 
