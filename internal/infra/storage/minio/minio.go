@@ -12,12 +12,15 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
 )
 
+// options — параметры подключения к S3, настраиваемые через функциональные опции.
 type options struct {
 	minIOCfg config.MinIO
 }
 
+// Option — функциональная опция для MinIO.
 type Option func(*options)
 
+// WithMinIOCfg устанавливает конфигурацию S3 хранилища.
 func WithMinIOCfg(minIOCfg config.MinIO) Option {
 	return func(o *options) {
 		o.minIOCfg = minIOCfg
@@ -34,7 +37,6 @@ type MinIO struct {
 // New создаёт новое подключение к S3 хранилищу.
 func New(ctx context.Context, logger zerolog.Logger, opts ...Option) (*MinIO, error) {
 	o := &options{}
-
 	for _, opt := range opts {
 		opt(o)
 	}

@@ -6,11 +6,12 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"go.uber.org/multierr"
 )
 
 // openConfigSafe открывает файл конфигурации через os.Root,
 // предотвращая path traversal за пределы каталога файла.
-func openConfigSafe(configPath string) (*os.File, error) {
+func openConfigSafe(configPath string) (_ *os.File, err error) {
 	dir := filepath.Dir(configPath)
 	name := filepath.Base(configPath)
 
@@ -18,7 +19,7 @@ func openConfigSafe(configPath string) (*os.File, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "не удалось открыть корневой каталог конфигурации")
 	}
-	defer root.Close()
+	defer multierr.AppendInvoke(&err, multierr.Close(root))
 
 	f, err := root.Open(name)
 	if err != nil {

@@ -13,12 +13,15 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/dbutils"
 )
 
+// options — параметры подключения к БД, настраиваемые через функциональные опции.
 type options struct {
 	databaseDSN string
 }
 
+// Option — функциональная опция для Postgres.
 type Option func(*options)
 
+// WithDatabaseDSN устанавливает строку подключения.
 func WithDatabaseDSN(databaseDSN string) Option {
 	return func(o *options) {
 		o.databaseDSN = databaseDSN
@@ -35,7 +38,6 @@ type Postgres struct {
 // New создаёт новое подключение к базе данных и применяет миграции.
 func New(logger zerolog.Logger, opts ...Option) (*Postgres, error) {
 	o := &options{}
-
 	for _, opt := range opts {
 		opt(o)
 	}

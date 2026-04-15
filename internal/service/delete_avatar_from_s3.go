@@ -24,7 +24,7 @@ func (s *Service) DeleteAvatarFromS3(ctx context.Context, msg *types.AvatarMessa
 	}
 
 	// Удаляем миниатюры
-	for _, size := range []types.ThumbnailSize{types.ThumbnailSize100, types.ThumbnailSize300} {
+	for size := range types.ThumbnailDimensions() {
 		thumbKey := fmt.Sprintf("%s/%s.%s", msg.AvatarID, string(size), format)
 		if err := s.storage.Delete(ctx, thumbKey); err != nil {
 			return errors.Wrap(err, "не удалось удалить миниатюру")

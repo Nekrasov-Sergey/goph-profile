@@ -12,19 +12,23 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
 )
 
+// options — параметры HTTP-сервера, настраиваемые через функциональные опции.
 type options struct {
 	httpHandler http.Handler
 	httpAddress string
 }
 
+// Option — функциональная опция для Server.
 type Option func(*options)
 
+// WithHTTPHandler устанавливает HTTP-обработчик.
 func WithHTTPHandler(httpHandler http.Handler) Option {
 	return func(o *options) {
 		o.httpHandler = httpHandler
 	}
 }
 
+// WithHTTPAddress устанавливает адрес прослушивания.
 func WithHTTPAddress(httpAddress string) Option {
 	return func(o *options) {
 		o.httpAddress = httpAddress
@@ -51,7 +55,6 @@ type Server struct {
 // New создаёт новый экземпляр HTTP-сервера.
 func New(logger zerolog.Logger, service Service, opts ...Option) *Server {
 	o := &options{}
-
 	for _, opt := range opts {
 		opt(o)
 	}
