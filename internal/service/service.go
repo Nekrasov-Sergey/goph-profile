@@ -62,15 +62,15 @@ type Consumer interface {
 
 // Service реализует бизнес-логику работы с аватарами.
 type Service struct {
+	logger   zerolog.Logger
 	repo     Repository
 	storage  Storage
 	producer Producer
 	consumer Consumer
-	logger   zerolog.Logger
 }
 
 // New создаёт новый экземпляр сервиса.
-func New(repo Repository, storage Storage, producer Producer, consumer Consumer, logger zerolog.Logger) *Service {
+func New(logger zerolog.Logger, repo Repository, storage Storage, producer Producer, consumer Consumer) *Service {
 	return &Service{
 		repo:     repo,
 		storage:  storage,

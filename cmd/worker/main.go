@@ -38,34 +38,34 @@ func run() (err error) {
 		return err
 	}
 
-	psql, err := postgres.New(cfg.DatabaseDSN, l)
+	psql, err := postgres.New(l, postgres.WithDatabaseDSN(cfg.DatabaseDSN))
 	if err != nil {
 		return err
 	}
 	defer multierr.AppendInvoke(&err, multierr.Close(psql))
 
-	minIO, err := minio.New(ctx, cfg.MinIO, l)
+	minIO, err := minio.New(ctx, l, minio.WithMinIOCfg(cfg.MinIO))
 	if err != nil {
 		return err
 	}
 
-	consumer, err := kafka.NewConsumer(ctx, l, cfg.Kafka)
+	consumer, err := kafka.NewConsumer(ctx, l, kafka.WithKafkaCfg(cfg.Kafka))
 	if err != nil {
 		return err
 	}
 	defer multierr.AppendInvoke(&err, multierr.Close(consumer))
 
-	svc := service.New(psql, minIO, nil, consumer, l)
+	svc := service.New(l, psql, minIO, nil, consumer)
 
-	w := worker.New(svc, l)
+	w := worker.New(l, svc)
 
-	startWorker(ctx, w, l)
+	startWorker(ctx, l, w)
 
 	return nil
 }
 
 // startWorker запускает worker и ожидает сигнал завершения.
-func startWorker(ctx context.Context, w *worker.Worker, l zerolog.Logger) {
+func startWorker(ctx context.Context, l zerolog.Logger, w *worker.Worker) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 

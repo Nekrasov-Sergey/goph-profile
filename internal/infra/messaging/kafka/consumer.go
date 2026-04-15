@@ -11,6 +11,18 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
 )
 
+type options struct {
+	kafkaCfg config.Kafka
+}
+
+type Option func(*options)
+
+func WithKafkaCfg(kafkaCfg config.Kafka) Option {
+	return func(o *options) {
+		o.kafkaCfg = kafkaCfg
+	}
+}
+
 // Consumer реализует консьюмер сообщений Kafka.
 type Consumer struct {
 	reader *kafka.Reader
@@ -18,12 +30,20 @@ type Consumer struct {
 }
 
 // NewConsumer создаёт новый консьюмер Kafka.
-func NewConsumer(ctx context.Context, logger zerolog.Logger, cfgKafka config.Kafka) (*Consumer, error) {
+func NewConsumer(ctx context.Context, logger zerolog.Logger, opts ...Option) (*Consumer, error) {
+	o := &options{}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	kafkaCfg := o.kafkaCfg
+
 	consumer := &Consumer{
 		reader: kafka.NewReader(kafka.ReaderConfig{
-			Brokers: cfgKafka.Brokers,
-			Topic:   cfgKafka.Topic,
-			GroupID: cfgKafka.GroupID,
+			Brokers: kafkaCfg.Brokers,
+			Topic:   kafkaCfg.Topic,
+			GroupID: kafkaCfg.GroupID,
 		}),
 		logger: logger,
 	}

@@ -47,13 +47,13 @@ func run() (err error) {
 		return err
 	}
 
-	psql, err := postgres.New(cfg.DatabaseDSN, l)
+	psql, err := postgres.New(l, postgres.WithDatabaseDSN(cfg.DatabaseDSN))
 	if err != nil {
 		return err
 	}
 	defer multierr.AppendInvoke(&err, multierr.Close(psql))
 
-	minIO, err := minio.New(ctx, cfg.MinIO, l)
+	minIO, err := minio.New(ctx, l, minio.WithMinIOCfg(cfg.MinIO))
 	if err != nil {
 		return err
 	}
@@ -64,9 +64,9 @@ func run() (err error) {
 	}
 	defer multierr.AppendInvoke(&err, multierr.Close(producer))
 
-	svc := service.New(psql, minIO, producer, nil, l)
+	svc := service.New(l, psql, minIO, producer, nil)
 
-	httpSrv := http.New(r, cfg.HTTPAddr, svc, l)
+	httpSrv := http.New(l, svc, http.WithHTTPHandler(r), http.WithHTTPAddress(cfg.HTTPAddr))
 
 	// Регистрация маршрутов
 	registerHandlers(r, httpSrv)
