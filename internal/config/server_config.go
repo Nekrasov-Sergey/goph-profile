@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
+	"go.uber.org/multierr"
 )
 
 // ServerConfig содержит конфигурацию сервера.
@@ -43,18 +44,23 @@ func GetServerConfigPath() string {
 }
 
 // NewServerConfig загружает конфигурацию сервера из файла.
-func NewServerConfig(logger zerolog.Logger) (*ServerConfig, error) {
-	viper.SetConfigFile(GetServerConfigPath())
+func NewServerConfig(logger zerolog.Logger) (_ *ServerConfig, err error) {
+	f, err := openConfigSafe(GetServerConfigPath())
+	if err != nil {
+		return nil, err
+	}
+	multierr.AppendInvoke(&err, multierr.Close(f))
+
+	viper.SetConfigType("yaml")
+	if err = viper.ReadConfig(f); err != nil {
+		return nil, errors.Wrap(err, "не удалось прочитать конфигурацию из файла")
+	}
 
 	cfg := ServerConfig{
 		HTTPAddr: ":8080",
 	}
 
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, errors.Wrap(err, "не удалось прочитать конфигурацию из файла")
-	}
-
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err = viper.Unmarshal(&cfg); err != nil {
 		return nil, errors.Wrap(err, "не удалось распарсить конфигурацию в структуру")
 	}
 
