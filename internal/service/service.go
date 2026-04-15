@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"github.com/segmentio/kafka-go"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
 )
@@ -51,12 +50,13 @@ type Producer interface {
 	Ping(ctx context.Context) error
 }
 
-// Consumer определяет интерфейс консьюмера Kafka.
+// Consumer определяет интерфейс консьюмера сообщений.
 //
 //go:generate minimock -i Consumer -o ./mocks/consumer.go -n ConsumerMock
 type Consumer interface {
-	ReadMessage(ctx context.Context) (*kafka.Message, error)
-	// Close закрывает соединение с Kafka.
+	// ReadAvatarMessage читает и десериализует следующее сообщение об аватаре.
+	ReadAvatarMessage(ctx context.Context) (*types.AvatarMessage, error)
+	// Close закрывает соединение с брокером сообщений.
 	Close() error
 }
 
