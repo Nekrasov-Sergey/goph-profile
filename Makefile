@@ -86,7 +86,7 @@ docker-up:
 .PHONY: docker-infra
 docker-infra:
 	@echo "🚀 Запуск инфраструктуры..."
-	$(DOCKER_COMPOSE) up -d db minio kafka kafka-ui
+	$(DOCKER_COMPOSE) up -d db minio kafka kafka-ui otel-collector loki grafana
 
 # Остановить все контейнеры
 .PHONY: docker-down
@@ -99,21 +99,6 @@ docker-down:
 docker-clean:
 	@echo "🧹 Очистка Docker (контейнеры + volumes)..."
 	$(DOCKER_COMPOSE) down -v
-
-# Просмотр логов
-.PHONY: docker-logs
-docker-logs:
-	$(DOCKER_COMPOSE) logs -f
-
-# Просмотр логов сервера
-.PHONY: docker-logs-server
-docker-logs-server:
-	$(DOCKER_COMPOSE) logs -f server
-
-# Просмотр логов воркера
-.PHONY: docker-logs-worker
-docker-logs-worker:
-	$(DOCKER_COMPOSE) logs -f worker
 
 # Перезапуск сервисов
 .PHONY: docker-restart
@@ -231,7 +216,6 @@ help:
 	@echo "    make docker-down   - Остановить все контейнеры"
 	@echo "    make docker-infra  - Запустить только инфраструктуру"
 	@echo "    make docker-build  - Собрать Docker-образ"
-	@echo "    make docker-logs   - Просмотр логов всех сервисов"
 	@echo "    make docker-clean  - Остановить и удалить volumes"
 	@echo ""
 	@echo "  Разработка:"
