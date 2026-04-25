@@ -35,7 +35,11 @@ func run() (err error) {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
 
-	l := logger.New()
+	l, otelShutdown, err := logger.New(ctx, "server")
+	if err != nil {
+		return err
+	}
+	defer otelShutdown()
 
 	cfg, err := config.NewServerConfig(l)
 	if err != nil {
@@ -64,7 +68,7 @@ func run() (err error) {
 	}
 	defer multierr.AppendInvoke(&err, multierr.Close(producer))
 
-	svc := service.New(l, psql, minIO, producer, nil)
+	svc := service.New(l, psql, minIO, service.WithProducer(producer))
 
 	httpSrv := http.New(l, svc, http.WithHTTPHandler(r), http.WithHTTPAddress(cfg.HTTPAddr))
 

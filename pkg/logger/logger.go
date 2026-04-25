@@ -1,44 +1,43 @@
-// Package logger содержит настройку логирования приложения.
 package logger
 
 import (
-	"bytes"
+	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 )
 
-// New настраивает и возвращает логгер с форматированным выводом.
-func New() zerolog.Logger {
-	keys := []string{"method", "url", "req_id", "status", "duration", "size", "stack"}
-	consoleWriter := zerolog.ConsoleWriter{
-		Out:        os.Stdout,
-		TimeFormat: time.DateTime,
-		FormatExtra: func(m map[string]interface{}, b *bytes.Buffer) error {
-			for _, key := range keys {
-				if val, ok := m[key]; ok {
-					if _, err := fmt.Fprintf(b, " \033[36m%s\033[0m=%v", key, val); err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		},
-		FieldsExclude: keys,
+const ServiceName = "avatar-service"
+
+func New(ctx context.Context, component string) (zerolog.Logger, func(), error) {
+	loggerProvider, err := newLoggerProvider(ctx)
+	if err != nil {
+		return zerolog.Logger{}, nil, err
 	}
 
-	zerolog.ErrorStackMarshaler = func(err error) interface{} {
+	zerolog.ErrorStackMarshaler = func(err error) any {
 		return fmt.Sprintf("%+v", err)
 	}
 
-	logger := zerolog.New(consoleWriter).
+	logger := zerolog.New(&otelWriter{
+		console: newConsoleWriter(),
+		logger:  loggerProvider.Logger(ServiceName),
+	}).
 		With().
 		Timestamp().
-		Logger()
+		Str("component", component).
+		Logger().
+		Hook(&traceHook{})
 
-	log.Logger = logger
-	return logger
+	shutdown := func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := loggerProvider.Shutdown(ctx); err != nil {
+			otel.Handle(err)
+		}
+	}
+
+	return logger, shutdown, nil
 }

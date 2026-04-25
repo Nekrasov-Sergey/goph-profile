@@ -7,9 +7,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/logger"
 )
 
 // options — параметры HTTP-сервера, настраиваемые через функциональные опции.
@@ -53,16 +55,22 @@ type Server struct {
 }
 
 // New создаёт новый экземпляр HTTP-сервера.
-func New(logger zerolog.Logger, service Service, opts ...Option) *Server {
+func New(l zerolog.Logger, service Service, opts ...Option) *Server {
 	o := &options{}
 	for _, opt := range opts {
 		opt(o)
 	}
 
+	wrappedHandler := otelhttp.NewHandler(
+		o.httpHandler,
+		logger.ServiceName,
+		otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents),
+	)
+
 	return &Server{
-		logger: logger,
+		logger: l,
 		server: &http.Server{
-			Handler: o.httpHandler,
+			Handler: wrappedHandler,
 			Addr:    o.httpAddress,
 		},
 		service: service,
