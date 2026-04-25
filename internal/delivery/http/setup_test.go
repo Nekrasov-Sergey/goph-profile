@@ -38,7 +38,7 @@ func setupTestServer(t minimock.Tester) *testEnv {
 	storageMock := mocks.NewStorageMock(t)
 	producerMock := mocks.NewProducerMock(t)
 
-	svc := service.New(zerolog.Nop(), repoMock, storageMock, producerMock, nil)
+	svc := service.New(zerolog.Nop(), repoMock, storageMock, service.WithProducer(producerMock))
 
 	r := gin.New()
 	httpSrv := pkghttp.New(zerolog.Nop(), svc, pkghttp.WithHTTPHandler(r), pkghttp.WithHTTPAddress(":0"))

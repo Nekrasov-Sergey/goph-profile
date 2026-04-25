@@ -5,6 +5,8 @@
 Загруженное изображение сохраняется в S3-хранилище, а в Kafka отправляется сообщение для асинхронного создания
 миниатюр (100x100 и 300x300). Worker читает сообщения из Kafka, генерирует миниатюры и обновляет статус обработки в БД.
 
+Логи приложения экспортируются через OpenTelemetry Collector в Grafana Loki и доступны для просмотра в Grafana.
+
 ## Архитектура
 
 **Server** — HTTP-API. Принимает загрузку, отдаёт файлы (с ресайзом и конвертацией на лету), удаляет аватары, шлёт
@@ -17,6 +19,12 @@
 **MinIO** — S3-совместимое хранилище оригиналов и миниатюр.
 
 **Kafka** — Брокер сообщений между Server и Worker.
+
+**OpenTelemetry Collector** — Принимает OTLP-логи от приложения, обогащает метаданными и отправляет в Loki.
+
+**Grafana Loki** — Хранилище структурированных логов.
+
+**Grafana** — Дашборды для просмотра логов (Loki настроен как datasource по умолчанию).
 
 ## API
 
@@ -48,6 +56,9 @@
 - **golang-migrate** — миграции БД
 - **oapi-codegen** — генерация HTTP-кода из OpenAPI
 - **minimock** — генерация моков
+- **OpenTelemetry** — OTLP-экспорт логов
+- **Grafana Loki 3.6** — хранилище логов
+- **Grafana 12.3** — визуализация логов
 
 ## Быстрый старт
 
@@ -86,10 +97,11 @@ API будет доступен на `http://localhost:8080`.
 |---------------|-----------------------------------------------------|
 | MinIO Console | http://localhost:9001 (`minioadmin` / `minioadmin`) |
 | Kafka UI      | http://localhost:8088                               |
+| Grafana       | http://localhost:3000                               |
 
 ### Вариант 2: Только инфраструктура в Docker, приложение локально
 
-Поднимает PostgreSQL, MinIO, Kafka — без Server и Worker:
+Поднимает PostgreSQL, MinIO, Kafka, Loki, Grafana и OTel Collector — без Server и Worker:
 
 ```bash
 make docker-infra
@@ -122,35 +134,38 @@ make docker-clean
 
 ## Основные команды Make
 
-| Команда             | Описание                                                          |
-|---------------------|-------------------------------------------------------------------|
-| `make setup`        | Полная инициализация: инструменты, зависимости, генерация, сборка |
-| `make build`        | Собрать бинарники server и worker                                 |
-| `make server`       | Собрать и запустить сервер                                        |
-| `make worker`       | Собрать и запустить worker                                        |
-| `make docker-build` | Собрать Docker-образ                                              |
-| `make docker-up`    | Запустить всё в Docker                                            |
-| `make docker-infra` | Запустить только инфраструктуру (БД, MinIO, Kafka)                |
-| `make docker-down`  | Остановить контейнеры                                             |
-| `make docker-clean` | Остановить контейнеры и удалить тома                              |
-| `make test`         | Запустить тесты                                                   |
-| `make test-cover`   | Тесты с покрытием (отчёт в `coverage.html`)                       |
-| `make lint`         | Запустить golangci-lint                                           |
-| `make gen`          | Сгенерировать код из OpenAPI + моки                               |
-| `make deps`         | Скачать зависимости и выполнить `go mod tidy`                     |
+| Команда                 | Описание                                                          |
+|-------------------------|-------------------------------------------------------------------|
+| `make setup`            | Полная инициализация: инструменты, зависимости, генерация, сборка |
+| `make build`            | Собрать бинарники server и worker                                 |
+| `make server`           | Собрать и запустить сервер                                        |
+| `make worker`           | Собрать и запустить worker                                        |
+| `make docker-build`     | Собрать Docker-образ                                              |
+| `make docker-up`        | Запустить всё в Docker                                            |
+| `make docker-infra`     | Запустить инфраструктуру (БД, MinIO, Kafka, Loki, Grafana, OTel)  |
+| `make docker-down`      | Остановить контейнеры                                             |
+| `make docker-clean`     | Остановить контейнеры и удалить тома                              |
+| `make test`             | Запустить тесты                                                   |
+| `make test-cover`       | Тесты с покрытием (отчёт в `coverage.html`)                       |
+| `make lint`             | Запустить golangci-lint                                           |
+| `make gen`              | Сгенерировать код из OpenAPI + моки                               |
+| `make deps`             | Скачать зависимости и выполнить `go mod tidy`                     |
 
 Полный список: `make help`.
 
 ## Порты
 
-| Сервис        | Порт  | Назначение          |
-|---------------|-------|---------------------|
-| Server        | 8080  | HTTP API            |
-| PostgreSQL    | 5555  | База данных         |
-| MinIO API     | 9000  | S3-совместимый API  |
-| MinIO Console | 9001  | Веб-интерфейс MinIO |
-| Kafka         | 29092 | Внешний listener    |
-| Kafka UI      | 8088  | Веб-интерфейс Kafka |
+| Сервис         | Порт  | Назначение          |
+|----------------|-------|---------------------|
+| Server         | 8080  | HTTP API            |
+| PostgreSQL     | 5555  | База данных         |
+| MinIO API      | 9000  | S3-совместимый API  |
+| MinIO Console  | 9001  | Веб-интерфейс MinIO |
+| Kafka          | 29092 | Внешний listener    |
+| Kafka UI       | 8088  | Веб-интерфейс Kafka |
+| OTel Collector | 4317  | OTLP gRPC           |
+| Loki           | 3100  | HTTP API + OTLP     |
+| Grafana        | 3000  | Веб-интерфейс       |
 
 ## Структура проекта
 
@@ -158,6 +173,10 @@ make docker-clean
 cmd/
   server/                  # Точка входа HTTP-сервера
   worker/                  # Точка входа worker-консьюмера
+deploy/
+  grafana/                 # Конфиг datasource (Loki)
+  loki/                    # Конфиг Loki
+  otel/                    # Конфиг OpenTelemetry Collector
 internal/
   config/                  # Загрузка конфигурации (YAML + env)
   delivery/http/           # HTTP-обработчики, роутер, middleware
@@ -173,7 +192,7 @@ pkg/
   dbutils/                 # Утилиты БД: NamedExec, транзакции, retry
   errcodes/                # Доменные ошибки
   imageutils/              # Ресайз, конвертация изображений
-  logger/                  # Настройка zerolog
+  logger/                  # Zerolog + OTel-провайдер (OTLP-экспорт в Loki)
   utils/                   # Дженерик-утилиты (Ptr, Deref)
 api/rest/swagger.yaml      # OpenAPI-спецификация
 config/                    # YAML-конфиги (локальные и Docker)
@@ -209,3 +228,12 @@ MINIO_ROOT_PASSWORD=minioadmin
    происходит на лету.
 5. При удалении (`DELETE /avatars/{id}`) Server помечает запись как удалённую и отправляет сообщение в Kafka — Worker
    удаляет файлы из MinIO.
+
+## Логи и мониторинг
+
+Логи приложения пишутся в консоль и одновременно экспортируются по OTLP в OpenTelemetry Collector, который
+перенаправляет их в Loki. Каждая запись лога содержит `service.name`, `trace_id` и `span_id` для корреляции
+трассировок.
+
+Для просмотра логов открой Grafana (`http://localhost:3000`), перейди в **Explore** и выбери datasource **Loki**.
+Логи можно фильтровать по уровню (`{level="error"}`), сервису (`{job="avatar-service"}`) и атрибутам.

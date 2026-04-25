@@ -11,6 +11,23 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
 )
 
+// Option — функциональная опция для Service.
+type Option func(s *Service)
+
+// WithProducer задаёт продюсера
+func WithProducer(producer Producer) Option {
+	return func(s *Service) {
+		s.producer = producer
+	}
+}
+
+// WithConsumer задаёт консьюмера
+func WithConsumer(consumer Consumer) Option {
+	return func(s *Service) {
+		s.consumer = consumer
+	}
+}
+
 // Repository определяет интерфейс хранилища данных.
 //
 //go:generate minimock -i Repository -o ./mocks/repo.go -n RepoMock
@@ -70,14 +87,18 @@ type Service struct {
 }
 
 // New создаёт новый экземпляр сервиса.
-func New(logger zerolog.Logger, repo Repository, storage Storage, producer Producer, consumer Consumer) *Service {
-	return &Service{
-		repo:     repo,
-		storage:  storage,
-		producer: producer,
-		consumer: consumer,
-		logger:   logger,
+func New(logger zerolog.Logger, repo Repository, storage Storage, opts ...Option) *Service {
+	s := &Service{
+		repo:    repo,
+		storage: storage,
+		logger:  logger,
 	}
+
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s
 }
 
 // GetURL возвращает URL для доступа к файлу в хранилище.
