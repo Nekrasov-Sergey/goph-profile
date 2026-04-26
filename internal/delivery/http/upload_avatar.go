@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
 
 	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/openapi"
@@ -14,7 +16,13 @@ import (
 
 // UploadAvatar обрабатывает загрузку нового аватара.
 func (s *Server) UploadAvatar(c *gin.Context, params api.UploadAvatarParams) {
-	ctx := c.Request.Context()
+	ctx, span := s.tracer.Start(c.Request.Context(), "handler.UploadAvatar",
+		trace.WithAttributes(
+			attribute.String("user.id", params.XUserID),
+		),
+	)
+	defer span.End()
+	c.Request = c.Request.WithContext(ctx)
 
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
@@ -43,6 +51,8 @@ func (s *Server) UploadAvatar(c *gin.Context, params api.UploadAvatarParams) {
 		respondError(c, err, http.StatusInternalServerError)
 		return
 	}
+
+	span.SetAttributes(attribute.String("avatar.id", resp.ID.String()))
 
 	c.JSON(http.StatusCreated, api.UploadAvatarResponse{
 		Id:        resp.ID,

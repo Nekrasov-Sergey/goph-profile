@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/openapi"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
@@ -11,7 +13,13 @@ import (
 
 // HealthCheck обрабатывает проверку здоровья сервиса.
 func (s *Server) HealthCheck(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx, span := s.tracer.Start(c.Request.Context(), "handler.HealthCheck",
+		trace.WithAttributes(
+			attribute.String("component", "healthcheck"),
+		),
+	)
+	defer span.End()
+	c.Request = c.Request.WithContext(ctx)
 
 	result := s.service.HealthCheck(ctx)
 

@@ -7,6 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
 )
@@ -72,10 +74,13 @@ type Producer interface {
 //go:generate minimock -i Consumer -o ./mocks/consumer.go -n ConsumerMock
 type Consumer interface {
 	// ReadAvatarMessage читает и десериализует следующее сообщение об аватаре.
-	ReadAvatarMessage(ctx context.Context) (*types.AvatarMessage, error)
+	// Возвращает контекст с восстановленным trace context из заголовков сообщения.
+	ReadAvatarMessage(ctx context.Context) (context.Context, *types.AvatarMessage, error)
 	// Close закрывает соединение с брокером сообщений.
 	Close() error
 }
+
+const tracerName = "avatar-service/service"
 
 // Service реализует бизнес-логику работы с аватарами.
 type Service struct {
@@ -84,6 +89,7 @@ type Service struct {
 	storage  Storage
 	producer Producer
 	consumer Consumer
+	tracer   trace.Tracer
 }
 
 // New создаёт новый экземпляр сервиса.
@@ -92,6 +98,7 @@ func New(logger zerolog.Logger, repo Repository, storage Storage, opts ...Option
 		repo:    repo,
 		storage: storage,
 		logger:  logger,
+		tracer:  otel.Tracer(tracerName),
 	}
 
 	for _, opt := range opts {

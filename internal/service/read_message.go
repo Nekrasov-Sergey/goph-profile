@@ -7,6 +7,7 @@ import (
 )
 
 // GetAvatarMessage читает следующее сообщение об аватаре из брокера.
-func (s *Service) GetAvatarMessage(ctx context.Context) (*types.AvatarMessage, error) {
+// Возвращает контекст с восстановленным trace context из заголовков сообщения.
+func (s *Service) GetAvatarMessage(ctx context.Context) (context.Context, *types.AvatarMessage, error) {
 	return s.consumer.ReadAvatarMessage(ctx)
 }

@@ -8,9 +8,13 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
 )
+
+const tracerName = "avatar-service/minio"
 
 // options — параметры подключения к S3, настраиваемые через функциональные опции.
 type options struct {
@@ -32,6 +36,7 @@ type MinIO struct {
 	client *minio.Client
 	bucket string
 	logger zerolog.Logger
+	tracer trace.Tracer
 }
 
 // New создаёт новое подключение к S3 хранилищу.
@@ -70,6 +75,7 @@ func New(ctx context.Context, logger zerolog.Logger, opts ...Option) (*MinIO, er
 		client: client,
 		bucket: minIOCfg.Bucket,
 		logger: logger,
+		tracer: otel.Tracer(tracerName),
 	}, nil
 }
 

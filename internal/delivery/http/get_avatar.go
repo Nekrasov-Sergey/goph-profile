@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	apitypes "github.com/oapi-codegen/runtime/types"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
 
 	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/openapi"
@@ -17,7 +19,13 @@ import (
 
 // GetAvatar обрабатывает получение файла аватара по ID с опциональным размером и форматом.
 func (s *Server) GetAvatar(c *gin.Context, avatarId apitypes.UUID, params api.GetAvatarParams) {
-	ctx := c.Request.Context()
+	ctx, span := s.tracer.Start(c.Request.Context(), "handler.GetAvatar",
+		trace.WithAttributes(
+			attribute.String("avatar.id", avatarId.String()),
+		),
+	)
+	defer span.End()
+	c.Request = c.Request.WithContext(ctx)
 
 	req := service.GetAvatarRequest{
 		ID: avatarId,

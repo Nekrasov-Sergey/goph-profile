@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	apitypes "github.com/oapi-codegen/runtime/types"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/openapi"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
@@ -14,7 +16,14 @@ import (
 
 // DeleteAvatar обрабатывает удаление аватара по ID.
 func (s *Server) DeleteAvatar(c *gin.Context, avatarId apitypes.UUID, params api.DeleteAvatarParams) {
-	ctx := c.Request.Context()
+	ctx, span := s.tracer.Start(c.Request.Context(), "handler.DeleteAvatar",
+		trace.WithAttributes(
+			attribute.String("avatar.id", avatarId.String()),
+			attribute.String("user.id", params.XUserID),
+		),
+	)
+	defer span.End()
+	c.Request = c.Request.WithContext(ctx)
 
 	req := service.DeleteAvatarRequest{
 		AvatarID: avatarId,

@@ -8,11 +8,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
-	"github.com/Nekrasov-Sergey/goph-profile/pkg/logger"
 )
+
+const tracerName = "avatar-service/http"
 
 // options — параметры HTTP-сервера, настраиваемые через функциональные опции.
 type options struct {
@@ -50,12 +53,13 @@ type Service interface {
 // Server инкапсулирует http-сервер приложения.
 type Server struct {
 	logger  zerolog.Logger
+	tracer  trace.Tracer
 	server  *http.Server
 	service Service
 }
 
 // New создаёт новый экземпляр HTTP-сервера.
-func New(l zerolog.Logger, service Service, opts ...Option) *Server {
+func New(logger zerolog.Logger, service Service, opts ...Option) *Server {
 	o := &options{}
 	for _, opt := range opts {
 		opt(o)
@@ -63,12 +67,13 @@ func New(l zerolog.Logger, service Service, opts ...Option) *Server {
 
 	wrappedHandler := otelhttp.NewHandler(
 		o.httpHandler,
-		logger.ServiceName,
+		tracerName,
 		otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents),
 	)
 
 	return &Server{
-		logger: l,
+		logger: logger.With().Str("component", "http").Logger(),
+		tracer: otel.Tracer(tracerName),
 		server: &http.Server{
 			Handler: wrappedHandler,
 			Addr:    o.httpAddress,

@@ -17,6 +17,7 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/worker"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/logger"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/tracer"
 )
 
 // main — точка входа worker.
@@ -31,11 +32,17 @@ func run() (err error) {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
 
-	l, otelShutdown, err := logger.New(ctx, "worker")
+	l, loggerShutdown, err := logger.New(ctx)
 	if err != nil {
 		return err
 	}
-	defer otelShutdown()
+	defer loggerShutdown()
+
+	tracerShutdown, err := tracer.New(ctx, "worker")
+	if err != nil {
+		return err
+	}
+	defer tracerShutdown()
 
 	cfg, err := config.NewWorkerConfig(l)
 	if err != nil {

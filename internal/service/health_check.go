@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Статусы здоровья.
@@ -22,6 +25,13 @@ type HealthCheckResult struct {
 
 // HealthCheck проверяет здоровье всех компонентов.
 func (s *Service) HealthCheck(ctx context.Context) *HealthCheckResult {
+	ctx, span := s.tracer.Start(ctx, "service.HealthCheck",
+		trace.WithAttributes(
+			attribute.String("component", "healthcheck"),
+		),
+	)
+	defer span.End()
+
 	result := &HealthCheckResult{
 		Status: StatusHealthy,
 	}
