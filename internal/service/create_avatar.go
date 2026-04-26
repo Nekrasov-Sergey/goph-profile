@@ -14,8 +14,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/errcodes"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/tracer"
 )
 
 const (
@@ -49,26 +53,33 @@ type UploadAvatarResponse struct {
 
 // CreateAvatar создает аватар пользователя.
 func (s *Service) CreateAvatar(ctx context.Context, req UploadAvatarRequest) (*UploadAvatarResponse, error) {
+	ctx, span := s.tracer.Start(ctx, "service.CreateAvatar",
+		trace.WithAttributes(
+			attribute.String("user.id", req.UserID),
+		),
+	)
+	defer span.End()
+
 	// Валидация размера файла
 	if req.Size > maxFileSize {
-		return nil, errcodes.ErrFileTooLarge
+		return nil, tracer.SpanError(span, errcodes.ErrFileTooLarge)
 	}
 
 	// Валидация MIME-типа
 	buffer := make([]byte, 512)
 	if _, err := req.File.Read(buffer); err != nil && err != io.EOF {
-		return nil, errors.Wrap(err, "не удалось прочитать файл")
+		return nil, tracer.SpanError(span, errors.Wrap(err, "не удалось прочитать файл"))
 	}
 
 	mimeType := http.DetectContentType(buffer)
 	if !supportedMimeTypes[mimeType] {
-		return nil, errcodes.ErrInvalidFormat
+		return nil, tracer.SpanError(span, errcodes.ErrInvalidFormat)
 	}
 
 	// Сбрасываем позицию в файле после чтения буфера
 	if seeker, ok := req.File.(io.Seeker); ok {
 		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
-			return nil, errors.Wrap(err, "не удалось сбросить позицию в файле")
+			return nil, tracer.SpanError(span, errors.Wrap(err, "не удалось сбросить позицию в файле"))
 		}
 	}
 
@@ -85,12 +96,13 @@ func (s *Service) CreateAvatar(ctx context.Context, req UploadAvatarRequest) (*U
 	// Сбрасываем позицию после декодирования
 	if seeker, ok := req.File.(io.Seeker); ok {
 		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
-			return nil, errors.Wrap(err, "не удалось сбросить позицию в файле")
+			return nil, tracer.SpanError(span, errors.Wrap(err, "не удалось сбросить позицию в файле"))
 		}
 	}
 
 	// Генерируем ID и ключ для S3
 	avatarID := uuid.New()
+	span.SetAttributes(attribute.String("avatar.id", avatarID.String()))
 	ext := filepath.Ext(req.FileName)
 	if ext == "" {
 		ext = s.extensionFromMimeType(mimeType)
@@ -99,7 +111,7 @@ func (s *Service) CreateAvatar(ctx context.Context, req UploadAvatarRequest) (*U
 
 	// Загружаем файл в S3
 	if err := s.storage.Upload(ctx, s3Key, req.File, req.Size, mimeType); err != nil {
-		return nil, errors.Wrap(err, "не удалось загрузить файл в хранилище")
+		return nil, tracer.SpanError(span, err)
 	}
 
 	// Создаём запись в БД
@@ -123,7 +135,7 @@ func (s *Service) CreateAvatar(ctx context.Context, req UploadAvatarRequest) (*U
 		if delErr := s.storage.Delete(ctx, s3Key); delErr != nil {
 			s.logger.Error().Err(delErr).Msg("Не удалось удалить файл из S3 при откате")
 		}
-		return nil, errors.Wrap(err, "не удалось создать запись аватара")
+		return nil, tracer.SpanError(span, errors.Wrap(err, "не удалось создать запись аватара"))
 	}
 
 	// Отправляем сообщение в Kafka для создания миниатюр
@@ -137,7 +149,7 @@ func (s *Service) CreateAvatar(ctx context.Context, req UploadAvatarRequest) (*U
 
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
-		return nil, errors.Wrap(err, "не удалось сериализовать сообщение")
+		return nil, tracer.SpanError(span, errors.Wrap(err, "не удалось сериализовать сообщение"))
 	}
 
 	if err := s.producer.SendMessage(ctx, msgBytes); err != nil {

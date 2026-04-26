@@ -10,6 +10,8 @@ import (
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 
 	"go.opentelemetry.io/otel/sdk/resource"
+
+	serviceinfo "github.com/Nekrasov-Sergey/goph-profile/pkg/service_info"
 )
 
 // newLoggerProvider создаёт OTel LoggerProvider
@@ -23,7 +25,7 @@ func newLoggerProvider(ctx context.Context) (*sdklog.LoggerProvider, error) {
 		resource.WithFromEnv(),
 		resource.WithTelemetrySDK(),
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String(ServiceName),
+			semconv.ServiceNameKey.String(serviceinfo.ServiceName),
 			semconv.ServiceVersionKey.String("1.0.0"),
 		),
 	)

@@ -11,12 +11,19 @@ services:
       - "8080:8080"
     environment:
       - SERVER_CONFIG_PATH=/app/config/server-docker.yaml
+      - OTEL_SERVICE_NAME=avatar-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_COMPRESSION=gzip
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=development
     depends_on:
       db:
         condition: service_healthy
       minio:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      otel-collector:
         condition: service_healthy
     restart: unless-stopped
 
@@ -29,12 +36,19 @@ services:
     command: [ "./worker" ]
     environment:
       - WORKER_CONFIG_PATH=/app/config/worker-docker.yaml
+      - OTEL_SERVICE_NAME=avatar-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_COMPRESSION=gzip
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=development
     depends_on:
       db:
         condition: service_healthy
       minio:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      otel-collector:
         condition: service_healthy
     restart: unless-stopped
 
@@ -50,7 +64,7 @@ services:
       - "5555:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: always
+    restart: unless-stopped
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 5s
@@ -69,7 +83,7 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
-    restart: always
+    restart: unless-stopped
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s
@@ -96,6 +110,7 @@ services:
       - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
     volumes:
       - kafka_data:/var/lib/kafka/data
+    restart: unless-stopped
     healthcheck:
       test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092" ]
       interval: 10s
@@ -114,9 +129,10 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+    restart: unless-stopped
 
   otel-collector:
-    image: otel/opentelemetry-collector:0.143.0
+    image: otel/opentelemetry-collector-contrib:latest
     container_name: otel-collector
     ports:
       - "4317:4317"
@@ -127,7 +143,14 @@ services:
       - ./deploy/otel/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
     depends_on:
       - loki
+      - jaeger
     restart: unless-stopped
+    healthcheck:
+      test: [ 'CMD', 'curl', '-f', 'http://localhost:13133' ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   loki:
     image: grafana/loki:3.6.3
@@ -152,6 +175,13 @@ services:
     depends_on:
       - loki
     restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"
 
 volumes:
   postgres_data:

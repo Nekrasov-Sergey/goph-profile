@@ -7,11 +7,14 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/errcodes"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/imageutils"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/tracer"
 )
 
 // GetAvatarRequest содержит параметры для получения аватара.
@@ -30,31 +33,38 @@ type GetAvatarResponse struct {
 
 // GetAvatar получает аватар по ID с поддержкой размера и формата.
 func (s *Service) GetAvatar(ctx context.Context, req GetAvatarRequest) (*GetAvatarResponse, error) {
+	ctx, span := s.tracer.Start(ctx, "service.GetAvatar",
+		trace.WithAttributes(
+			attribute.String("avatar.id", req.ID.String()),
+		),
+	)
+	defer span.End()
+
 	// Получаем метаданные из БД
 	avatar, err := s.repo.GetAvatar(ctx, req.ID)
 	if err != nil {
-		return nil, err
+		return nil, tracer.SpanError(span, err)
 	}
 
 	s3Key, err := resolveS3Key(avatar, req.Size)
 	if err != nil {
-		return nil, err
+		return nil, tracer.SpanError(span, err)
 	}
 
 	reader, err := s.storage.Download(ctx, s3Key)
 	if err != nil {
-		return nil, errors.Wrap(err, "не удалось скачать файл из хранилища")
+		return nil, tracer.SpanError(span, errors.Wrap(err, "не удалось скачать файл из хранилища"))
 	}
 
 	mimeType, err := imageutils.ResolveMimeType(avatar.MimeType, req.Format)
 	if err != nil {
 		multierr.AppendInvoke(&err, multierr.Close(reader))
-		return nil, err
+		return nil, tracer.SpanError(span, err)
 	}
 
 	newReader, size, err := imageutils.ChangeMimeType(reader, avatar.MimeType, mimeType)
 	if err != nil {
-		return nil, err
+		return nil, tracer.SpanError(span, err)
 	}
 
 	return &GetAvatarResponse{

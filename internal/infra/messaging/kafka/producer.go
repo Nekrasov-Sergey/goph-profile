@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
 )
@@ -38,10 +39,14 @@ func NewProducer(ctx context.Context, logger zerolog.Logger, cfgKafka config.Kaf
 	return producer, nil
 }
 
-// SendMessage отправляет сообщение в Kafka.
+// SendMessage отправляет сообщение в Kafka с проброшенным trace context.
 func (p *Producer) SendMessage(ctx context.Context, value []byte) error {
+	var headers kafkaHeadersCarrier
+	otel.GetTextMapPropagator().Inject(ctx, &headers)
+
 	kafkaMsg := kafka.Message{
-		Value: value,
+		Value:   value,
+		Headers: headers,
 	}
 
 	if err := p.writer.WriteMessages(ctx, kafkaMsg); err != nil {

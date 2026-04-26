@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
@@ -62,18 +63,22 @@ func NewConsumer(ctx context.Context, logger zerolog.Logger, opts ...Option) (*C
 }
 
 // ReadAvatarMessage читает и десериализует следующее сообщение об аватаре из Kafka.
-func (c *Consumer) ReadAvatarMessage(ctx context.Context) (*types.AvatarMessage, error) {
+// Возвращает контекст с восстановленным trace context из заголовков сообщения.
+func (c *Consumer) ReadAvatarMessage(ctx context.Context) (context.Context, *types.AvatarMessage, error) {
 	msg, err := c.reader.ReadMessage(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "не удалось прочитать сообщение из Kafka")
+		return ctx, nil, errors.Wrap(err, "не удалось прочитать сообщение из Kafka")
 	}
+
+	// Восстанавливаем trace context из заголовков Kafka-сообщения
+	ctx = otel.GetTextMapPropagator().Extract(ctx, new(kafkaHeadersCarrier(msg.Headers)))
 
 	var avatarMessage types.AvatarMessage
 	if err := json.Unmarshal(msg.Value, &avatarMessage); err != nil {
-		return nil, errors.Wrap(err, "не удалось десериализовать сообщение")
+		return ctx, nil, errors.Wrap(err, "не удалось десериализовать сообщение")
 	}
 
-	return &avatarMessage, nil
+	return ctx, &avatarMessage, nil
 }
 
 // Close закрывает соединение с Kafka.

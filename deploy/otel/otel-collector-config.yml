@@ -4,6 +4,10 @@ receivers:
       grpc:
         endpoint: 0.0.0.0:4317
 
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
 processors:
   batch:
     timeout: 10s
@@ -21,8 +25,14 @@ exporters:
     compression: "gzip"
     tls:
       insecure: true
+  otlp/traces:
+    endpoint: 'jaeger:4317'
+    tls:
+      insecure: true
 
 service:
+  extensions:
+    - health_check
   pipelines:
     logs:
       receivers: [ otlp ]
@@ -30,3 +40,7 @@ service:
         - resource/add-job
         - batch
       exporters: [ otlphttp/loki ]
+    traces:
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ otlp/traces ]

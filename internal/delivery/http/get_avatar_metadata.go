@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	apitypes "github.com/oapi-codegen/runtime/types"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	api "github.com/Nekrasov-Sergey/goph-profile/internal/delivery/http/openapi"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/errcodes"
@@ -15,7 +17,13 @@ import (
 
 // GetAvatarMetadata обрабатывает получение метаданных аватара по ID.
 func (s *Server) GetAvatarMetadata(c *gin.Context, avatarId apitypes.UUID) {
-	ctx := c.Request.Context()
+	ctx, span := s.tracer.Start(c.Request.Context(), "handler.GetAvatarMetadata",
+		trace.WithAttributes(
+			attribute.String("avatar.id", avatarId.String()),
+		),
+	)
+	defer span.End()
+	c.Request = c.Request.WithContext(ctx)
 
 	avatar, err := s.service.GetAvatarMetadata(ctx, avatarId)
 	if err != nil {

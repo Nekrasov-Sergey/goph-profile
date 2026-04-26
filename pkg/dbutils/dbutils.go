@@ -11,11 +11,26 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
+
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/tracer"
 )
+
+const tracerName = "avatar-service/pkg/dbutils"
 
 // NamedGet выполняет SQL-запрос с именованными параметрами и загружает одну запись в dest.
 func NamedGet(ctx context.Context, db sqlx.ExtContext, dest any, q string, arg any) error {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "db.NamedGet",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.statement", truncateSQL(q)),
+		),
+	)
+	defer span.End()
+
 	nq, args, err := db.BindNamed(q, arg)
 	if err != nil {
 		return errors.Wrap(err, "не удалось подготовить SQL-запрос (NamedGet)")
@@ -26,11 +41,19 @@ func NamedGet(ctx context.Context, db sqlx.ExtContext, dest any, q string, arg a
 			return errors.Wrap(err, "не удалось выполнить SQL-запрос (NamedGet)")
 		}
 		return nil
-	})
+	}, span)
 }
 
 // NamedSelect выполняет SQL-запрос с именованными параметрами и загружает результат в слайс dest.
 func NamedSelect(ctx context.Context, db sqlx.ExtContext, dest any, q string, arg any) error {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "db.NamedSelect",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.statement", truncateSQL(q)),
+		),
+	)
+	defer span.End()
+
 	nq, args, err := db.BindNamed(q, arg)
 	if err != nil {
 		return errors.Wrap(err, "не удалось подготовить SQL-запрос (NamedSelect)")
@@ -41,11 +64,19 @@ func NamedSelect(ctx context.Context, db sqlx.ExtContext, dest any, q string, ar
 			return errors.Wrap(err, "не удалось выполнить SQL-запрос (NamedSelect)")
 		}
 		return nil
-	})
+	}, span)
 }
 
 // NamedExec выполняет SQL-запрос с именованными параметрами без возврата данных.
 func NamedExec(ctx context.Context, db sqlx.ExtContext, q string, arg any) error {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "db.NamedExec",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.statement", truncateSQL(q)),
+		),
+	)
+	defer span.End()
+
 	nq, args, err := db.BindNamed(q, arg)
 	if err != nil {
 		return errors.Wrap(err, "не удалось подготовить SQL-запрос (NamedExec)")
@@ -56,11 +87,11 @@ func NamedExec(ctx context.Context, db sqlx.ExtContext, q string, arg any) error
 			return errors.Wrap(err, "не удалось выполнить SQL-запрос (NamedExec)")
 		}
 		return nil
-	})
+	}, span)
 }
 
 // runWithRetries выполняет функцию с повторными попытками при ошибках соединения.
-func runWithRetries(ctx context.Context, fn func() error) (err error) {
+func runWithRetries(ctx context.Context, fn func() error, span trace.Span) (err error) {
 	delays := []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second, 0}
 	for i, delay := range delays {
 		if err = fn(); err == nil {
@@ -68,7 +99,7 @@ func runWithRetries(ctx context.Context, fn func() error) (err error) {
 		}
 
 		if !isConnectionError(err) {
-			return err
+			return tracer.SpanError(span, err)
 		}
 
 		log.Error().Err(err).Msgf("Ошибка соединения c PostgreSQL, попытка №%d", i+1)
@@ -78,14 +109,14 @@ func runWithRetries(ctx context.Context, fn func() error) (err error) {
 			case <-ctx.Done():
 				timer.Stop()
 				log.Error().Msg("Запрос отменён контекстом во время ожидания")
-				return err
+				return tracer.SpanError(span, ctx.Err())
 			case <-timer.C:
 			}
 		}
 	}
 
 	log.Error().Msg("Все попытки подключения исчерпаны")
-	return err
+	return tracer.SpanError(span, err)
 }
 
 // isConnectionError проверяет, является ли ошибка ошибкой соединения с PostgreSQL.
@@ -111,8 +142,26 @@ type DB interface {
 // TxFunc описывает функцию, выполняемую внутри транзакции.
 type TxFunc func(tx *sqlx.Tx) error
 
+// truncateSQL обрезает SQL-запрос для атрибута span, оставляя первые 500 символов.
+func truncateSQL(q string) string {
+	if len(q) > 500 {
+		return q[:500] + "..."
+	}
+	return q
+}
+
 // WrapTxx выполняет функцию внутри транзакции.
 func WrapTxx(ctx context.Context, db DB, opts *sql.TxOptions, f TxFunc) (err error) {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "db.Transaction",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+		),
+	)
+	defer func() {
+		_ = tracer.SpanError(span, err)
+		span.End()
+	}()
+
 	tx, err := db.BeginTxx(ctx, opts)
 	if err != nil {
 		return errors.Wrap(err, "не удалось начать транзакцию")

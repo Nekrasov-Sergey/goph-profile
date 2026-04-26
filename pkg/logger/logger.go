@@ -7,11 +7,11 @@ import (
 
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
+
+	serviceinfo "github.com/Nekrasov-Sergey/goph-profile/pkg/service_info"
 )
 
-const ServiceName = "avatar-service"
-
-func New(ctx context.Context, component string) (zerolog.Logger, func(), error) {
+func New(ctx context.Context) (zerolog.Logger, func(), error) {
 	loggerProvider, err := newLoggerProvider(ctx)
 	if err != nil {
 		return zerolog.Logger{}, nil, err
@@ -23,11 +23,10 @@ func New(ctx context.Context, component string) (zerolog.Logger, func(), error) 
 
 	logger := zerolog.New(&otelWriter{
 		console: newConsoleWriter(),
-		logger:  loggerProvider.Logger(ServiceName),
+		logger:  loggerProvider.Logger(serviceinfo.ServiceName),
 	}).
 		With().
 		Timestamp().
-		Str("component", component).
 		Logger().
 		Hook(&traceHook{})
 
