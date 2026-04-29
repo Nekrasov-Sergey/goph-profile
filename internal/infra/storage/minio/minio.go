@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/metrics"
 )
 
 const tracerName = "avatar-service/minio"
@@ -19,6 +20,7 @@ const tracerName = "avatar-service/minio"
 // options — параметры подключения к S3, настраиваемые через функциональные опции.
 type options struct {
 	minIOCfg config.MinIO
+	meter    *metrics.Instruments
 }
 
 // Option — функциональная опция для MinIO.
@@ -31,12 +33,20 @@ func WithMinIOCfg(minIOCfg config.MinIO) Option {
 	}
 }
 
+// WithMeter задаёт метрические инструменты.
+func WithMeter(meter *metrics.Instruments) Option {
+	return func(o *options) {
+		o.meter = meter
+	}
+}
+
 // MinIO реализует хранилище файлов на базе S3.
 type MinIO struct {
 	client *minio.Client
 	bucket string
 	logger zerolog.Logger
 	tracer trace.Tracer
+	meter  *metrics.Instruments
 }
 
 // New создаёт новое подключение к S3 хранилищу.
@@ -76,6 +86,7 @@ func New(ctx context.Context, logger zerolog.Logger, opts ...Option) (*MinIO, er
 		bucket: minIOCfg.Bucket,
 		logger: logger,
 		tracer: otel.Tracer(tracerName),
+		meter:  o.meter,
 	}, nil
 }
 

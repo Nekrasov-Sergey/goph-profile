@@ -1,8 +1,8 @@
-// Package kafka реализует брокер сообщений на базе Kafka.
 package kafka
 
 import (
 	"context"
+	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
@@ -12,20 +12,29 @@ import (
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/metrics"
 )
 
-// options — параметры подключения к Kafka, настраиваемые через функциональные опции.
-type options struct {
+// consumerOptions — параметры подключения к Kafka, настраиваемые через функциональные опции.
+type consumerOptions struct {
 	kafkaCfg config.Kafka
+	meter    *metrics.Instruments
 }
 
-// Option — функциональная опция для Consumer.
-type Option func(*options)
+// ConsumerOption — функциональная опция для Consumer.
+type ConsumerOption func(*consumerOptions)
 
-// WithKafkaCfg устанавливает конфигурацию Kafka.
-func WithKafkaCfg(kafkaCfg config.Kafka) Option {
-	return func(o *options) {
+// WithConsumerKafkaCfg устанавливает конфигурацию Kafka.
+func WithConsumerKafkaCfg(kafkaCfg config.Kafka) ConsumerOption {
+	return func(o *consumerOptions) {
 		o.kafkaCfg = kafkaCfg
+	}
+}
+
+// WithConsumerMeter задаёт метрические инструменты.
+func WithConsumerMeter(meter *metrics.Instruments) ConsumerOption {
+	return func(o *consumerOptions) {
+		o.meter = meter
 	}
 }
 
@@ -33,11 +42,12 @@ func WithKafkaCfg(kafkaCfg config.Kafka) Option {
 type Consumer struct {
 	reader *kafka.Reader
 	logger zerolog.Logger
+	meter  *metrics.Instruments
 }
 
 // NewConsumer создаёт новый консьюмер Kafka.
-func NewConsumer(ctx context.Context, logger zerolog.Logger, opts ...Option) (*Consumer, error) {
-	o := &options{}
+func NewConsumer(ctx context.Context, logger zerolog.Logger, opts ...ConsumerOption) (*Consumer, error) {
+	o := &consumerOptions{}
 	for _, opt := range opts {
 		opt(o)
 	}
@@ -51,6 +61,7 @@ func NewConsumer(ctx context.Context, logger zerolog.Logger, opts ...Option) (*C
 			GroupID: kafkaCfg.GroupID,
 		}),
 		logger: logger,
+		meter:  o.meter,
 	}
 
 	if err := consumer.Ping(ctx); err != nil {
@@ -64,21 +75,26 @@ func NewConsumer(ctx context.Context, logger zerolog.Logger, opts ...Option) (*C
 
 // ReadAvatarMessage читает и десериализует следующее сообщение об аватаре из Kafka.
 // Возвращает контекст с восстановленным trace context из заголовков сообщения.
-func (c *Consumer) ReadAvatarMessage(ctx context.Context) (context.Context, *types.AvatarMessage, error) {
-	msg, err := c.reader.ReadMessage(ctx)
+func (c *Consumer) ReadAvatarMessage(ctx context.Context) (retCtx context.Context, msg *types.AvatarMessage, err error) {
+	start := time.Now()
+	defer func() {
+		c.recordKafkaConsumerMetrics(ctx, err, time.Since(start))
+	}()
+
+	kafkaMsg, err := c.reader.ReadMessage(ctx)
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "не удалось прочитать сообщение из Kafka")
 	}
 
 	// Восстанавливаем trace context из заголовков Kafka-сообщения
-	ctx = otel.GetTextMapPropagator().Extract(ctx, new(kafkaHeadersCarrier(msg.Headers)))
+	retCtx = otel.GetTextMapPropagator().Extract(ctx, new(kafkaHeadersCarrier(kafkaMsg.Headers)))
 
 	var avatarMessage types.AvatarMessage
-	if err := json.Unmarshal(msg.Value, &avatarMessage); err != nil {
-		return ctx, nil, errors.Wrap(err, "не удалось десериализовать сообщение")
+	if err := json.Unmarshal(kafkaMsg.Value, &avatarMessage); err != nil {
+		return retCtx, nil, errors.Wrap(err, "не удалось десериализовать сообщение")
 	}
 
-	return ctx, &avatarMessage, nil
+	return retCtx, &avatarMessage, nil
 }
 
 // Close закрывает соединение с Kafka.

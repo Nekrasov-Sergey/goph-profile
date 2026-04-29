@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/types"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/metrics"
 )
 
 // Option — функциональная опция для Service.
@@ -27,6 +28,13 @@ func WithProducer(producer Producer) Option {
 func WithConsumer(consumer Consumer) Option {
 	return func(s *Service) {
 		s.consumer = consumer
+	}
+}
+
+// WithMeter задаёт метрические инструменты
+func WithMeter(meter *metrics.Instruments) Option {
+	return func(s *Service) {
+		s.meter = meter
 	}
 }
 
@@ -90,6 +98,7 @@ type Service struct {
 	producer Producer
 	consumer Consumer
 	tracer   trace.Tracer
+	meter    *metrics.Instruments
 }
 
 // New создаёт новый экземпляр сервиса.

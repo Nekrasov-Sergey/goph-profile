@@ -21,7 +21,7 @@ type DeleteAvatarRequest struct {
 }
 
 // DeleteAvatarFromDB удаляет аватар по ID.
-func (s *Service) DeleteAvatarFromDB(ctx context.Context, req DeleteAvatarRequest) error {
+func (s *Service) DeleteAvatarFromDB(ctx context.Context, req DeleteAvatarRequest) (err error) {
 	ctx, span := s.tracer.Start(ctx, "service.DeleteAvatarFromDB",
 		trace.WithAttributes(
 			attribute.String("avatar.id", req.AvatarID.String()),
@@ -29,6 +29,11 @@ func (s *Service) DeleteAvatarFromDB(ctx context.Context, req DeleteAvatarReques
 		),
 	)
 	defer span.End()
+
+	dbSuccess := false
+	defer func() {
+		s.recordDeleteMetrics(ctx, "soft_delete", dbSuccess)
+	}()
 
 	// Получаем аватар для проверки владельца и получения S3 ключа
 	avatar, err := s.repo.GetAvatar(ctx, req.AvatarID)
@@ -45,6 +50,8 @@ func (s *Service) DeleteAvatarFromDB(ctx context.Context, req DeleteAvatarReques
 	if err := s.repo.SoftDeleteAvatar(ctx, req.AvatarID, req.UserID); err != nil {
 		return tracer.SpanError(span, err)
 	}
+
+	dbSuccess = true
 
 	// Отправляем сообщение в Kafka для удаления аватарки
 	msg := types.AvatarMessage{

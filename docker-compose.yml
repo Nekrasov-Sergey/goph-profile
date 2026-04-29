@@ -13,6 +13,7 @@ services:
       - SERVER_CONFIG_PATH=/app/config/server-docker.yaml
       - OTEL_SERVICE_NAME=avatar-service
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://otel-collector:4318
       - OTEL_EXPORTER_OTLP_COMPRESSION=gzip
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=development
@@ -38,6 +39,7 @@ services:
       - WORKER_CONFIG_PATH=/app/config/worker-docker.yaml
       - OTEL_SERVICE_NAME=avatar-worker
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://otel-collector:4318
       - OTEL_EXPORTER_OTLP_COMPRESSION=gzip
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=development
@@ -136,6 +138,8 @@ services:
     container_name: otel-collector
     ports:
       - "4317:4317"
+      - "4318:4318"
+      - "8889:8889"
       - "13133:13133"
     command:
       - "--config=/etc/otel-collector-config.yml"
@@ -171,9 +175,12 @@ services:
       - "3000:3000"
     volumes:
       - ./deploy/grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./deploy/grafana/dashboards:/etc/grafana/dashboards:ro
+      - ./deploy/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - grafana-data:/var/lib/grafana
     depends_on:
       - loki
+      - prometheus
     restart: unless-stopped
 
   jaeger:
@@ -183,9 +190,39 @@ services:
     ports:
       - "16686:16686"
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./deploy/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml
+    ports:
+      - '9090:9090'
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    ports:
+      - '9100:9100'
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./deploy/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    ports:
+      - '9093:9093'
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--log.level=debug'
+
 volumes:
   postgres_data:
   minio_data:
   kafka_data:
   loki-data:
   grafana-data:
+
+networks:
+  default:
+    driver: bridge

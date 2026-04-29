@@ -1,0 +1,23 @@
+route:
+  group_by: [ 'severity' ]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 4h
+  receiver: 'default'
+
+  routes:
+    - receiver: 'critical'
+      match:
+        severity: critical
+      repeat_interval: 1h
+
+receivers:
+  - name: 'default'
+    webhook_configs:
+      - url: 'http://localhost:9093/null'
+        send_resolved: true
+
+  - name: 'critical'
+    webhook_configs:
+      - url: 'http://localhost:9093/null'
+        send_resolved: true

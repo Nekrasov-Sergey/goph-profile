@@ -52,13 +52,24 @@ type UploadAvatarResponse struct {
 }
 
 // CreateAvatar создает аватар пользователя.
-func (s *Service) CreateAvatar(ctx context.Context, req UploadAvatarRequest) (*UploadAvatarResponse, error) {
+func (s *Service) CreateAvatar(ctx context.Context, req UploadAvatarRequest) (resp *UploadAvatarResponse, err error) {
 	ctx, span := s.tracer.Start(ctx, "service.CreateAvatar",
 		trace.WithAttributes(
 			attribute.String("user.id", req.UserID),
 		),
 	)
 	defer span.End()
+
+	// Устанавливаем статус failed для метрик на случай раннего выхода.
+	// При успехе будет перезаписан на success.
+	uploadSuccess := false
+	var mimeType string
+
+	defer func() {
+		if mimeType != "" {
+			s.recordUploadMetrics(ctx, types.MIMEType(mimeType), req.Size, uploadSuccess)
+		}
+	}()
 
 	// Валидация размера файла
 	if req.Size > maxFileSize {
@@ -71,7 +82,7 @@ func (s *Service) CreateAvatar(ctx context.Context, req UploadAvatarRequest) (*U
 		return nil, tracer.SpanError(span, errors.Wrap(err, "не удалось прочитать файл"))
 	}
 
-	mimeType := http.DetectContentType(buffer)
+	mimeType = http.DetectContentType(buffer)
 	if !supportedMimeTypes[mimeType] {
 		return nil, tracer.SpanError(span, errcodes.ErrInvalidFormat)
 	}
@@ -161,6 +172,8 @@ func (s *Service) CreateAvatar(ctx context.Context, req UploadAvatarRequest) (*U
 			s.logger.Error().Err(err).Send()
 		}
 	}
+
+	uploadSuccess = true
 
 	return &UploadAvatarResponse{
 		ID:        avatarID,

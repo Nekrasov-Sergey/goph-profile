@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -34,7 +36,8 @@ func New(ctx context.Context, component string) (func(), error) {
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			attribute.String("service.name", serviceinfo.ServiceName),
+			semconv.ServiceNameKey.String(serviceinfo.ServiceName),
+			semconv.ServiceVersionKey.String(serviceinfo.ServiceVersion),
 			attribute.String("component", component),
 		),
 		resource.WithTelemetrySDK(),
@@ -47,7 +50,7 @@ func New(ctx context.Context, component string) (func(), error) {
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithResource(res),
 		sdktrace.WithBatcher(exporter),
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(0.1))),
 	)
 
 	otel.SetTracerProvider(tracerProvider)

@@ -3,6 +3,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -11,11 +12,13 @@ import (
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/dbutils"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/metrics"
 )
 
 // options — параметры подключения к БД, настраиваемые через функциональные опции.
 type options struct {
 	databaseDSN string
+	meter       *metrics.Instruments
 }
 
 // Option — функциональная опция для Postgres.
@@ -28,11 +31,19 @@ func WithDatabaseDSN(databaseDSN string) Option {
 	}
 }
 
+// WithMeter задаёт метрические инструменты.
+func WithMeter(meter *metrics.Instruments) Option {
+	return func(o *options) {
+		o.meter = meter
+	}
+}
+
 // Postgres реализует хранилище данных на базе PostgreSQL.
 type Postgres struct {
 	db     sqlx.ExtContext
 	rawDB  *sqlx.DB
 	logger zerolog.Logger
+	meter  *metrics.Instruments
 }
 
 // New создаёт новое подключение к базе данных и применяет миграции.
@@ -57,6 +68,7 @@ func New(logger zerolog.Logger, opts ...Option) (*Postgres, error) {
 		db:     db,
 		rawDB:  db,
 		logger: logger,
+		meter:  o.meter,
 	}, nil
 }
 
@@ -76,12 +88,17 @@ func (p *Postgres) WithTx(ctx context.Context, fn func(txRepo service.Repository
 			db:     tx,
 			rawDB:  nil,
 			logger: p.logger.With().Str("scope", "tx").Logger(),
+		meter:  p.meter,
 		}
 		return fn(txRepo)
 	})
 }
 
 // Ping проверяет доступность базы данных.
-func (p *Postgres) Ping(ctx context.Context) error {
+func (p *Postgres) Ping(ctx context.Context) (err error) {
+	start := time.Now()
+	defer func() {
+		p.recordDBMetrics(ctx, "ping", err, time.Since(start))
+	}()
 	return p.rawDB.PingContext(ctx)
 }

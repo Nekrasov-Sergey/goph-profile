@@ -1,0 +1,163 @@
+groups:
+  - name: avatar-service
+    interval: 30s
+    rules:
+      # === HTTP метрики ===
+
+      - alert: HighHTTPErrorRate5xx
+        expr: |
+          rate(http_server_request_errors_total{http_response_status_code=~"5.."}[5m])
+          /
+          (rate(http_server_requests_total[5m]) + 1)
+          > 0.05
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Высокий уровень 5xx ошибок HTTP"
+          description: |
+            Доля 5xx ошибок {{ $value | humanizePercentage }} за последние 5 минут. Сервис: {{ $labels.http_route }}
+
+      - alert: ElevatedHTTPErrorRate4xx
+        expr: |
+          rate(http_server_request_errors_total{http_response_status_code=~"4.."}[5m])
+          /
+          (rate(http_server_requests_total[5m]) + 1)
+          > 0.10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Повышенный уровень 4xx ошибок HTTP"
+          description: |
+            Доля 4xx ошибок {{ $value | humanizePercentage }} за последние 5 минут. Маршрут: {{ $labels.http_route }}
+
+      - alert: HighHTTPResponseTime
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_server_request_duration_bucket[5m])) by (le, http_route, http_request_method)
+          ) > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Высокое время ответа HTTP (P99)"
+          description: |
+            P99 время ответа {{ $value | humanizeDuration }}. Маршрут: {{ $labels.http_route }}, метод: {{ $labels.http_request_method }}
+
+      # === Бизнес-метрики ===
+
+      - alert: HighAvatarUploadErrorRate
+        expr: |
+          rate(avatar_upload_count_total{avatar_status="failed"}[10m])
+          /
+          (rate(avatar_upload_count_total[10m]) + 1)
+          > 0.10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Высокий уровень ошибок загрузки аватаров"
+          description: |
+            Доля неудачных загрузок {{ $value | humanizePercentage }} за последние 10 минут. MIME-тип: {{ $labels.avatar_mime_type }}
+
+      - alert: AvatarProcessingErrors
+        expr: rate(avatar_processing_duration_count{avatar_status="failed"}[10m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ошибки обработки миниатюр"
+          description: |
+            Зафиксированы ошибки обработки миниатюр за последние 10 минут. Операция: {{ $labels.avatar_operation }}
+
+      # === Инфраструктурные метрики ===
+
+      - alert: HighDBErrorRate
+        expr: rate(db_operation_errors_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Ошибки базы данных"
+          description: |
+            Зафиксированы ошибки БД за последние 5 минут. Операция: {{ $labels.db_operation }}
+
+      - alert: SlowDBOperations
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(db_operation_duration_bucket[5m])) by (le, db_operation)
+          ) > 1
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Медленные операции БД (P99)"
+          description: |
+            P99 время выполнения операции БД {{ $value | humanizeDuration }}. Операция: {{ $labels.db_operation }}
+
+      - alert: DeadDBCalls
+        expr: histogram_quantile(0.99, sum(rate(db_operation_duration_bucket[5m])) by (le, db_operation)) > 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Критически медленные или зависшие запросы к БД"
+          description: |
+            P99 время выполнения операции БД {{ $value | humanizeDuration }} (более 10 секунд). Операция: {{ $labels.db_operation }}
+
+      - alert: HighS3ErrorRate
+        expr: rate(s3_operation_errors_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Ошибки S3 хранилища"
+          description: |
+            Зафиксированы ошибки S3 за последние 5 минут. Операция: {{ $labels.s3_operation }}
+
+      - alert: SlowS3Operations
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(s3_operation_duration_bucket[5m])) by (le, s3_operation)
+          ) > 5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Медленные операции S3 (P99)"
+          description: |
+            P99 время выполнения S3 операции {{ $value | humanizeDuration }}. Операция: {{ $labels.s3_operation }}
+
+      - alert: HighKafkaErrorRate
+        expr: rate(kafka_operation_errors_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Ошибки Kafka"
+          description: |
+            Зафиксированы ошибки Kafka за последние 5 минут. Операция: {{ $labels.messaging_operation }}
+
+      - alert: SlowKafkaOperations
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(kafka_operation_duration_bucket[5m])) by (le, messaging_operation)
+          ) > 10
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Медленные операции Kafka (P99)"
+          description: |
+            P99 время выполнения Kafka операции {{ $value | humanizeDuration }}. Операция: {{ $labels.messaging_operation }}
+
+      - alert: NoMetrics
+        expr: up{job="otel-collector"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Метрики не поступают"
+          description: |
+            OTel Collector недоступен для скрейпинга. Метрики не собираются.

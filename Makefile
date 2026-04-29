@@ -86,7 +86,7 @@ docker-up:
 .PHONY: docker-infra
 docker-infra:
 	@echo "🚀 Запуск инфраструктуры..."
-	$(DOCKER_COMPOSE) up -d db minio kafka kafka-ui otel-collector loki grafana
+	$(DOCKER_COMPOSE) up -d db minio kafka kafka-ui otel-collector loki grafana prometheus node_exporter alertmanager
 
 # Остановить все контейнеры
 .PHONY: docker-down
@@ -109,6 +109,23 @@ docker-restart:
 .PHONY: docker-ps
 docker-ps:
 	$(DOCKER_COMPOSE) ps
+
+# === Логи ===
+
+# Логи сервера
+.PHONY: logs-server
+logs-server:
+	$(DOCKER_COMPOSE) logs -f server
+
+# Логи воркера
+.PHONY: logs-worker
+logs-worker:
+	$(DOCKER_COMPOSE) logs -f worker
+
+# Логи всех сервисов
+.PHONY: logs-all
+logs-all:
+	$(DOCKER_COMPOSE) logs -f
 
 # === Генерация кода ===
 
@@ -188,6 +205,40 @@ tools:
 	@go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
+# === Алертинг ===
+
+# Проверка синтаксиса правил и конфигов алертинга
+.PHONY: alert-check
+alert-check:
+	@echo "🔍 Проверка правил алертинга..."
+	@docker run --rm --entrypoint promtool -v $(PWD)/deploy/prometheus:/rules prom/prometheus:latest \
+		check rules /rules/alert-rules.yml && \
+		echo "  ✓ Правила алертинга (Prometheus) корректны" || \
+		(echo "  ✗ Ошибка в правилах алертинга"; exit 1)
+	@docker run --rm --entrypoint amtool -v $(PWD)/deploy/prometheus:/config prom/alertmanager:latest \
+		check-config /config/alertmanager.yml && \
+		echo "  ✓ Конфигурация Alertmanager корректна" || \
+		(echo "  ✗ Ошибка в конфигурации Alertmanager"; exit 1)
+	@echo "✅ Все проверки пройдены"
+
+# Отправка тестовых алертов в Alertmanager (+ генерация трафика для Prometheus)
+# SEVERITY=all — алерты + трафик + статус
+# SEVERITY=traffic — только генерация HTTP-трафика для проверки Prometheus-правил
+.PHONY: alert-test
+alert-test:
+	@ALERTMANAGER_URL=$${ALERTMANAGER_URL:-http://localhost:9093} \
+		PROMETHEUS_URL=$${PROMETHEUS_URL:-http://localhost:9090} \
+		SERVER_URL=$${SERVER_URL:-http://localhost:8080} \
+		./scripts/test-alert.sh ${SEVERITY}
+
+# Показать статус системы алертинга
+.PHONY: alert-status
+alert-status:
+	@echo "📊 Статус системы алертинга..."
+	@ALERTMANAGER_URL=$${ALERTMANAGER_URL:-http://localhost:9093} \
+		PROMETHEUS_URL=$${PROMETHEUS_URL:-http://localhost:9090} \
+		./scripts/test-alert.sh status
+
 # === Утилиты ===
 
 # Форматирование кода
@@ -218,8 +269,21 @@ help:
 	@echo "    make docker-build  - Собрать Docker-образ"
 	@echo "    make docker-clean  - Остановить и удалить volumes"
 	@echo ""
+	@echo "  Логи:"
+	@echo "    make logs-server   - Логи сервера"
+	@echo "    make logs-worker   - Логи воркера"
+	@echo "    make logs-all      - Логи всех сервисов"
+	@echo ""
+	@echo "  Алертинг:"
+	@echo "    make alert-check   - Проверить синтаксис правил и конфигов алертинга"
+	@echo "    make alert-test    - Отправить тестовый алерт (SEVERITY=warning|critical|all|traffic)"
+	@echo "    make alert-status  - Показать статус системы алертинга"
+	@echo ""
 	@echo "  Разработка:"
 	@echo "    make gen           - Генерация кода"
 	@echo "    make test          - Запустить тесты"
+	@echo "    make test-cover    - Тесты с покрытием"
 	@echo "    make lint          - Запустить линтер"
+	@echo "    make lint-fix      - Запустить линтер с исправлениями"
 	@echo "    make fmt           - Форматировать код"
+	@echo "    make deps          - Скачать зависимости"

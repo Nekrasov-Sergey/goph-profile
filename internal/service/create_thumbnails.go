@@ -20,13 +20,19 @@ import (
 )
 
 // CreateThumbnails создаёт миниатюры для аватара.
-func (s *Service) CreateThumbnails(ctx context.Context, msg *types.AvatarMessage) error {
+func (s *Service) CreateThumbnails(ctx context.Context, msg *types.AvatarMessage) (err error) {
 	ctx, span := s.tracer.Start(ctx, "service.CreateThumbnails",
 		trace.WithAttributes(
 			attribute.String("avatar.id", msg.AvatarID.String()),
 		),
 	)
 	defer span.End()
+
+	processingStart := time.Now()
+	processingSuccess := false
+	defer func() {
+		s.recordProcessingMetrics(ctx, string(msg.Operation), time.Since(processingStart), processingSuccess)
+	}()
 
 	// Получаем текущее состояние аватара
 	avatar, err := s.repo.GetAvatar(ctx, msg.AvatarID)
@@ -36,6 +42,7 @@ func (s *Service) CreateThumbnails(ctx context.Context, msg *types.AvatarMessage
 
 	// Идемпотентность: если уже обработан, пропускаем
 	if avatar.ProcessingStatus == types.ProcessingStatusCompleted {
+		processingSuccess = true
 		return nil
 	}
 
@@ -82,6 +89,8 @@ func (s *Service) CreateThumbnails(ctx context.Context, msg *types.AvatarMessage
 			return tracer.SpanError(span, multierr.Append(err, s.setStatusFailed(ctx, avatar)))
 		}
 
+		s.recordThumbnailMetrics(ctx, msg.MimeType, int64(len(data)), true)
+
 		thumbnailKeys[sizeName] = thumbKey
 	}
 
@@ -99,6 +108,7 @@ func (s *Service) CreateThumbnails(ctx context.Context, msg *types.AvatarMessage
 		return tracer.SpanError(span, err)
 	}
 
+	processingSuccess = true
 	return nil
 }
 
