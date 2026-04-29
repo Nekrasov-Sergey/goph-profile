@@ -14,13 +14,18 @@ import (
 )
 
 // DeleteAvatarFromS3 удаляет аватар и его миниатюры из S3.
-func (s *Service) DeleteAvatarFromS3(ctx context.Context, msg *types.AvatarMessage) error {
+func (s *Service) DeleteAvatarFromS3(ctx context.Context, msg *types.AvatarMessage) (err error) {
 	ctx, span := s.tracer.Start(ctx, "service.DeleteAvatarFromS3",
 		trace.WithAttributes(
 			attribute.String("avatar.id", msg.AvatarID.String()),
 		),
 	)
 	defer span.End()
+
+	s3Success := false
+	defer func() {
+		s.recordDeleteMetrics(ctx, "s3_delete", s3Success)
+	}()
 
 	// Удаляем оригинальный файл
 	if err := s.storage.Delete(ctx, msg.S3Key); err != nil {
@@ -41,5 +46,6 @@ func (s *Service) DeleteAvatarFromS3(ctx context.Context, msg *types.AvatarMessa
 		}
 	}
 
+	s3Success = true
 	return nil
 }

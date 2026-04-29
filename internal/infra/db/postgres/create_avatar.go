@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -13,12 +14,17 @@ import (
 )
 
 // CreateAvatar создаёт новую запись аватара в базе данных.
-func (p *Postgres) CreateAvatar(ctx context.Context, avatar *types.Avatar) error {
+func (p *Postgres) CreateAvatar(ctx context.Context, avatar *types.Avatar) (err error) {
 	const q = `insert into avatars (id, user_id, file_name, mime_type, size_bytes, width, height, s3_key,
                      thumbnail_s3_keys, processing_status, created_at, updated_at)
 values (:id, :user_id, :file_name, :mime_type, :size_bytes, :width, :height, :s3_key, :thumbnail_s3_keys,
         :processing_status, :created_at, :updated_at)
         `
+
+	start := time.Now()
+	defer func() {
+		p.recordDBMetrics(ctx, "create_avatar", err, time.Since(start))
+	}()
 
 	if err := dbutils.NamedExec(ctx, p.db, q, avatar); err != nil {
 		var pgErr *pgconn.PgError

@@ -3,6 +3,7 @@ package kafka
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -10,24 +11,57 @@ import (
 	"go.opentelemetry.io/otel"
 
 	"github.com/Nekrasov-Sergey/goph-profile/internal/config"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/metrics"
 )
+
+// producerOptions — параметры подключения к Kafka, настраиваемые через функциональные опции.
+type producerOptions struct {
+	kafkaCfg config.Kafka
+	meter    *metrics.Instruments
+}
+
+// ProducerOption — функциональная опция для Producer.
+type ProducerOption func(*producerOptions)
+
+// WithProducerKafkaCfg устанавливает конфигурацию Kafka.
+func WithProducerKafkaCfg(kafkaCfg config.Kafka) ProducerOption {
+	return func(o *producerOptions) {
+		o.kafkaCfg = kafkaCfg
+	}
+}
+
+// WithProducerMeter задаёт метрические инструменты.
+func WithProducerMeter(meter *metrics.Instruments) ProducerOption {
+	return func(o *producerOptions) {
+		o.meter = meter
+	}
+}
 
 // Producer реализует Producer с использованием kafka-go.
 type Producer struct {
 	writer *kafka.Writer
 	logger zerolog.Logger
+	meter  *metrics.Instruments
 }
 
 // NewProducer создаёт новый продюсер Kafka.
-func NewProducer(ctx context.Context, logger zerolog.Logger, cfgKafka config.Kafka) (*Producer, error) {
+func NewProducer(ctx context.Context, logger zerolog.Logger, opts ...ProducerOption) (*Producer, error) {
+	o := &producerOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	kafkaCfg := o.kafkaCfg
+
 	producer := &Producer{
 		writer: &kafka.Writer{
-			Addr:                   kafka.TCP(cfgKafka.Brokers...),
-			Topic:                  cfgKafka.Topic,
+			Addr:                   kafka.TCP(kafkaCfg.Brokers...),
+			Topic:                  kafkaCfg.Topic,
 			AllowAutoTopicCreation: true,
 			Balancer:               &kafka.LeastBytes{},
 		},
 		logger: logger,
+		meter:  o.meter,
 	}
 
 	if err := producer.Ping(ctx); err != nil {
@@ -40,7 +74,12 @@ func NewProducer(ctx context.Context, logger zerolog.Logger, cfgKafka config.Kaf
 }
 
 // SendMessage отправляет сообщение в Kafka с проброшенным trace context.
-func (p *Producer) SendMessage(ctx context.Context, value []byte) error {
+func (p *Producer) SendMessage(ctx context.Context, value []byte) (err error) {
+	start := time.Now()
+	defer func() {
+		p.recordKafkaProducerMetrics(ctx, err, time.Since(start))
+	}()
+
 	var headers kafkaHeadersCarrier
 	otel.GetTextMapPropagator().Inject(ctx, &headers)
 

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -10,7 +11,7 @@ import (
 )
 
 // UpdateAvatar обновляет аватар.
-func (p *Postgres) UpdateAvatar(ctx context.Context, avatar *types.Avatar) error {
+func (p *Postgres) UpdateAvatar(ctx context.Context, avatar *types.Avatar) (err error) {
 	const query = `update avatars
 set user_id           = :user_id,
     file_name         = :file_name,
@@ -23,6 +24,11 @@ set user_id           = :user_id,
 where id = :id
   AND deleted_at is null
 	`
+
+	start := time.Now()
+	defer func() {
+		p.recordDBMetrics(ctx, "update_avatar", err, time.Since(start))
+	}()
 
 	if err := dbutils.NamedExec(ctx, p.db, query, avatar); err != nil {
 		return errors.Wrap(err, "не удалось обновить аватар")

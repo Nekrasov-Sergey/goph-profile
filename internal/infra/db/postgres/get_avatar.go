@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -13,9 +14,8 @@ import (
 )
 
 // GetAvatar получает аватар по ID.
-func (p *Postgres) GetAvatar(ctx context.Context, avatarID uuid.UUID) (*types.Avatar, error) {
+func (p *Postgres) GetAvatar(ctx context.Context, avatarID uuid.UUID) (avatar *types.Avatar, err error) {
 	const query = `select id,
-       id,
        user_id,
        file_name,
        mime_type,
@@ -33,11 +33,16 @@ where id = :id
   and deleted_at is null
 	`
 
+	start := time.Now()
+	defer func() {
+		p.recordDBMetrics(ctx, "get_avatar", err, time.Since(start))
+	}()
+
 	args := map[string]any{
 		"id": avatarID,
 	}
 
-	avatar := &types.Avatar{}
+	avatar = &types.Avatar{}
 	if err := dbutils.NamedGet(ctx, p.db, avatar, query, args); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errcodes.ErrAvatarNotFound

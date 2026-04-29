@@ -17,6 +17,7 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/worker"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/logger"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/metrics"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/tracer"
 )
 
@@ -44,29 +45,40 @@ func run() (err error) {
 	}
 	defer tracerShutdown()
 
+	metricsShutdown, err := metrics.New(ctx)
+	if err != nil {
+		return err
+	}
+	defer metricsShutdown()
+
 	cfg, err := config.NewWorkerConfig(l)
 	if err != nil {
 		return err
 	}
 
-	psql, err := postgres.New(l, postgres.WithDatabaseDSN(cfg.DatabaseDSN))
+	instr, err := metrics.NewInstruments()
+	if err != nil {
+		return err
+	}
+
+	psql, err := postgres.New(l, postgres.WithDatabaseDSN(cfg.DatabaseDSN), postgres.WithMeter(instr))
 	if err != nil {
 		return err
 	}
 	defer multierr.AppendInvoke(&err, multierr.Close(psql))
 
-	minIO, err := minio.New(ctx, l, minio.WithMinIOCfg(cfg.MinIO))
+	minIO, err := minio.New(ctx, l, minio.WithMinIOCfg(cfg.MinIO), minio.WithMeter(instr))
 	if err != nil {
 		return err
 	}
 
-	consumer, err := kafka.NewConsumer(ctx, l, kafka.WithKafkaCfg(cfg.Kafka))
+	consumer, err := kafka.NewConsumer(ctx, l, kafka.WithConsumerKafkaCfg(cfg.Kafka), kafka.WithConsumerMeter(instr))
 	if err != nil {
 		return err
 	}
 	defer multierr.AppendInvoke(&err, multierr.Close(consumer))
 
-	svc := service.New(l, psql, minIO, service.WithConsumer(consumer))
+	svc := service.New(l, psql, minIO, service.WithConsumer(consumer), service.WithMeter(instr))
 
 	w := worker.New(l, svc)
 

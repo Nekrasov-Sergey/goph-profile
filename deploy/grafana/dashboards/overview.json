@@ -1,0 +1,397 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "title": "Goph Profile — Overview",
+  "uid": "goph-profile-overview",
+  "version": 2,
+  "tags": ["goph-profile", "microservices"],
+  "timezone": "browser",
+  "editable": true,
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP Requests",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "HTTP Request Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_total[5m])) by (http_request_method, http_route)",
+          "legendFormat": "{{http_request_method}} {{http_route}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "HTTP Error Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "showPoints": "never" },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_request_errors_total[5m])) by (http_request_method, http_route)",
+          "legendFormat": "{{http_request_method}} {{http_route}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "title": "HTTP Request Duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket[5m])) by (le, http_request_method, http_route))",
+          "legendFormat": "p95 — {{http_request_method}} {{http_route}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Business Metrics (Avatars)",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
+    },
+    {
+      "id": 6,
+      "title": "Avatar Uploads",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 10 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(avatar_upload_count_total[5m]))",
+          "legendFormat": "uploads/s",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Upload Size (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 10 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "calcs": ["mean"] }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(avatar_upload_size_bytes_bucket[5m])) by (le))",
+          "legendFormat": "p95",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Processing Duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 10 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "calcs": ["mean"] }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(avatar_processing_duration_seconds_bucket[5m])) by (le, avatar_operation))",
+          "legendFormat": "p95 — {{avatar_operation}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Thumbnails & Deletes",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 10 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(avatar_thumbnail_count_total[5m]))",
+          "legendFormat": "thumbnails/s",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(avatar_delete_count_total[5m]))",
+          "legendFormat": "deletes/s",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Infrastructure",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }
+    },
+    {
+      "id": 11,
+      "title": "DB Operation Duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(db_operation_duration_seconds_bucket[5m])) by (le, db_operation))",
+          "legendFormat": "p95 — {{db_operation}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "DB Ops Count",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "calcs": ["mean"] }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(db_operation_duration_seconds_count[5m])) by (db_operation)",
+          "legendFormat": "{{db_operation}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "S3 Operations",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "calcs": ["mean"] }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(s3_operation_count_total[5m])) by (s3_operation)",
+          "legendFormat": "{{s3_operation}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "S3 Duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "calcs": ["mean"] }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(s3_operation_duration_seconds_bucket[5m])) by (le, s3_operation))",
+          "legendFormat": "p95 — {{s3_operation}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Messaging (Kafka)",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 }
+    },
+    {
+      "id": 16,
+      "title": "Kafka Messages",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 26 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "calcs": ["mean"] }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_messages_count_total[5m])) by (messaging_direction)",
+          "legendFormat": "{{messaging_direction}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Kafka Duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 26 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "calcs": ["mean"] }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(kafka_operation_duration_seconds_bucket[5m])) by (le, messaging_operation))",
+          "legendFormat": "p95 — {{messaging_operation}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Kafka Errors",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 26 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "thresholds",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_operation_errors_total[5m]))",
+          "legendFormat": "errors/s",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

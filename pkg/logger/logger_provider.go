@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 
@@ -26,7 +26,7 @@ func newLoggerProvider(ctx context.Context) (*sdklog.LoggerProvider, error) {
 		resource.WithTelemetrySDK(),
 		resource.WithAttributes(
 			semconv.ServiceNameKey.String(serviceinfo.ServiceName),
-			semconv.ServiceVersionKey.String("1.0.0"),
+			semconv.ServiceVersionKey.String(serviceinfo.ServiceVersion),
 		),
 	)
 	if err != nil {

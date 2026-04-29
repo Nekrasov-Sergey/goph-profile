@@ -3,15 +3,17 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
+
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/metrics"
 )
 
 // New создаёт и настраивает gin-роутер с middleware.
-func New(logger zerolog.Logger, mode string) (*gin.Engine, error) {
+func New(logger zerolog.Logger, mode string, meter *metrics.Instruments) (*gin.Engine, error) {
 	gin.SetMode(mode)
 
 	r := gin.New()
 
-	r.Use(gin.Recovery(), LoggerMiddleware(logger))
+	r.Use(gin.Recovery(), LoggerMiddleware(logger), MetricsMiddleware(meter))
 
 	// Раздача статических файлов фронтенда
 	r.Static("/static", "./web/static")

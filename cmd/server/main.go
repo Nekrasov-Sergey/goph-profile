@@ -21,6 +21,7 @@ import (
 	"github.com/Nekrasov-Sergey/goph-profile/internal/infra/storage/minio"
 	"github.com/Nekrasov-Sergey/goph-profile/internal/service"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/logger"
+	"github.com/Nekrasov-Sergey/goph-profile/pkg/metrics"
 	"github.com/Nekrasov-Sergey/goph-profile/pkg/tracer"
 )
 
@@ -48,34 +49,45 @@ func run() (err error) {
 	}
 	defer tracerShutdown()
 
+	metricsShutdown, err := metrics.New(ctx)
+	if err != nil {
+		return err
+	}
+	defer metricsShutdown()
+
 	cfg, err := config.NewServerConfig(l)
 	if err != nil {
 		return err
 	}
 
-	r, err := router.New(l, gin.ReleaseMode)
+	instr, err := metrics.NewInstruments()
 	if err != nil {
 		return err
 	}
 
-	psql, err := postgres.New(l, postgres.WithDatabaseDSN(cfg.DatabaseDSN))
+	r, err := router.New(l, gin.ReleaseMode, instr)
+	if err != nil {
+		return err
+	}
+
+	psql, err := postgres.New(l, postgres.WithDatabaseDSN(cfg.DatabaseDSN), postgres.WithMeter(instr))
 	if err != nil {
 		return err
 	}
 	defer multierr.AppendInvoke(&err, multierr.Close(psql))
 
-	minIO, err := minio.New(ctx, l, minio.WithMinIOCfg(cfg.MinIO))
+	minIO, err := minio.New(ctx, l, minio.WithMinIOCfg(cfg.MinIO), minio.WithMeter(instr))
 	if err != nil {
 		return err
 	}
 
-	producer, err := kafka.NewProducer(ctx, l, cfg.Kafka)
+	producer, err := kafka.NewProducer(ctx, l, kafka.WithProducerKafkaCfg(cfg.Kafka), kafka.WithProducerMeter(instr))
 	if err != nil {
 		return err
 	}
 	defer multierr.AppendInvoke(&err, multierr.Close(producer))
 
-	svc := service.New(l, psql, minIO, service.WithProducer(producer))
+	svc := service.New(l, psql, minIO, service.WithProducer(producer), service.WithMeter(instr))
 
 	httpSrv := http.New(l, svc, http.WithHTTPHandler(r), http.WithHTTPAddress(cfg.HTTPAddr))
 
